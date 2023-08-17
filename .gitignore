@@ -1,0 +1,4 @@
+# Ignore Python bytecode and optimization files
+*.npy
+*.pyc
+*.pyo
