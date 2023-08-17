@@ -16,7 +16,7 @@
     },
     {
       "name": "blue_charger",
-      "buffer_distance": 0.15,
+      "buffer_distance": 0.10,
       "vertices": [
         [2.90, 4.00],
         [4.85, 4.00],
@@ -40,7 +40,7 @@
     },
     {
       "name": "red_charger",
-      "buffer_distance": 0.15,
+      "buffer_distance": 0.10,
       "vertices": [
         [11.65, 4.00],
         [13.60, 4.00],

@@ -1,3 +1,5 @@
+#!/bin/python
+
 import os
 import random
 import numpy as np
@@ -6,6 +8,7 @@ import json
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.pyplot import figure
+from scipy.special import comb
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
@@ -120,7 +123,7 @@ def astar(array, start, goal):
   # List of positions that have already been considered
   close_set = set()
 
-  # Dictionary containing all routes we've taken
+  # Dictionary containing all paths we've taken
   came_from = {}
 
   # Scores
@@ -233,7 +236,7 @@ def dijkstra(array, start, goal):
   # If the goal is not reachable, return False
   return False
 
-def plot_route(route, start, goal):
+def plot_path(path, start, goal):
   """Plot route graphically
 
   Parameters
@@ -243,9 +246,9 @@ def plot_route(route, start, goal):
   # Extract x and y coordinates from route list
   x_coords = []
   y_coords = []
-  for i in (range(0,len(route))):
-    x = route[i][0]
-    y = route[i][1]
+  for i in (range(0,len(path))):
+    x = path[i][0]
+    y = path[i][1]
     x_coords.append(x)
     y_coords.append(y)
 
@@ -266,11 +269,11 @@ def main():
 
   generate_field(2023, 0.3)
 
-  route = dijkstra(frc_field, start, goal)
-  route = route + [start]
-  route = route[::-1]
+  path = dijkstra(frc_field, start, goal)
+  path = path + [start]
+  path = path[::-1]
 
-  plot_route(route, start, goal)
+  plot_path(path, start, goal)
 
 if __name__ == "__main__":
   main()
