@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.pyplot import figure
 from scipy.special import comb
+from scipy import interpolate
+from rdp import rdp
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
@@ -229,6 +231,8 @@ def plot_path(path, start, goal):
   route : Array of tuples representing path
   """
   # Extract x and y coordinates from route list
+  path = rdp(path, epsilon=50) # generate a simplified path
+ 
   x_coords = []
   y_coords = []
   for i in (range(0,len(path))):
@@ -237,13 +241,17 @@ def plot_path(path, start, goal):
     x_coords.append(x)
     y_coords.append(y)
 
+  # smooth the path using a spline
+  tck, *rest = interpolate.splprep([x_coords, y_coords])
+  x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 100), tck)
+
   # plot map and path
   fig, ax = plt.subplots()
   cmap = mcolors.ListedColormap(['green', 'grey', 'lightgrey'])
   ax.imshow(frc_field, cmap=cmap)
   ax.scatter(start[1], start[0], marker="*", color="yellow", s=200)
   ax.scatter(goal[1], goal[0], marker="*", color="red", s=200)
-  ax.plot(y_coords, x_coords, color="black")
+  ax.plot(y_smooth, x_smooth, color="blue")
   plt.show()
 
 
