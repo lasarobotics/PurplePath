@@ -5,6 +5,7 @@ import random
 import numpy as np
 import heapq
 import json
+import math
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.pyplot import figure
@@ -107,12 +108,31 @@ def get_neighbors(array, node):
   # If the goal is not reachable, return False
   return False
 
+def is_turn(current, neighbor, previous):
+  """Checks if the neighbor is a turn from the current point, given the previous point
+
+  Parameters
+  ----------
+  current : Tuple representing the current point
+  neighbor : Tuple representing the neighbor point
+  previous : Tuple representing the previous point
+
+  Returns
+  -------
+  bool : True if the neighbor is a turn, False otherwise
+  """
+
+  current_direction = tuple(x-y for x,y in zip(previous, current))
+  new_direction = tuple(x-y for x,y in zip(current, neighbor))
+
+  return current_direction == new_direction
+
 def astar(array, start, goal):
   """A* algorithm for finding the shortest path between two points in a graph.
 
   Parameters
   ----------
-  array : 2D array representing the graph
+  array : 2D array representing the field
   start : Tuple representing the start node
   goal : Tuple representing the goal node
 
@@ -167,11 +187,11 @@ def astar(array, start, goal):
   return False
 
 def astar_with_turns(array, start, goal):
-  """Dijkstra's algorithm for finding the shortest path between two points in a graph, with the fewest number of turns.
+  """A* algorithm for finding the shortest path between two points in a graph, with the fewest number of turns.
 
   Parameters
   ----------
-  array : 2D array representing the graph
+  array : 2D array representing the field
   start : Tuple representing the start node
   goal : Tuple representing the goal node
 
@@ -185,7 +205,8 @@ def astar_with_turns(array, start, goal):
   came_from = {}
   g_score = {start: 0}
   turn_score = {start: 0}
-  f_score = {start: g_score[start] + turn_score[start] + heuristic(start, goal)}
+  turn_penalty = 5
+  f_score = {start: g_score[start] + heuristic(start, goal)}
 
   # Create a priority queue to store the nodes to be explored
   oheap = []
@@ -215,6 +236,9 @@ def astar_with_turns(array, start, goal):
         g_score[neighbor] = g_score[current] + array[neighbor[0]][neighbor[1]]
         turn_score[neighbor] = turn_score[current] + 1
         f_score[neighbor] = g_score[neighbor] + turn_score[neighbor] + heuristic(neighbor, goal)
+        if current is not start:
+          if is_turn(current, neighbor, came_from[current]):
+            f_score[neighbor] += turn_penalty
         # Add the neighbor to the priority queue
         heapq.heappush(oheap, (f_score[neighbor], neighbor))
         # Add the neighbor to the came_from map
@@ -224,14 +248,15 @@ def astar_with_turns(array, start, goal):
   return False
 
 def plot_path(path, start, goal):
-  """Plot route graphically
+  """Plot path graphically
 
   Parameters
   ----------
-  route : Array of tuples representing path
+  path : Array of tuples representing path
   """
+  
   # Extract x and y coordinates from route list
-  path = rdp(path, epsilon=50) # generate a simplified path
+  path = rdp(path, epsilon=0.5) # generate a simplified path
  
   x_coords = []
   y_coords = []
@@ -260,7 +285,7 @@ def main():
   start = m_to_cm(11.00, 0.50)
   goal = m_to_cm(15.10, 6.75)
 
-  generate_field(2023, 0.3)
+  generate_field(2023, 0.35)
 
   path = astar_with_turns(frc_field, start, goal)
   path = path + [start]
