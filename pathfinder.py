@@ -102,83 +102,11 @@ def get_neighbors(array, node):
           neighbors.append(neighbor)
   return neighbors
 
-def astar(array, start, goal):
-  """A* path finding algorithm
-
-  Parameters
-  ----------
-  array : 2D array representing field to find path on
-  start : Tuple representing start position
-  goal : Tuple representing goal position
-
-  Returns
-  -------
-  boolean or array
-    Array of tuples representing path, or False if no path could be found
-  """
-
-  # Set neighbor distance
-  neighbors = [(0,1),(0,-1),(1,0),(-1,0),(1,1),(1,-1),(-1,1),(-1,-1)]
-
-  # List of positions that have already been considered
-  close_set = set()
-
-  # Dictionary containing all paths we've taken
-  came_from = {}
-
-  # Scores
-  gscore = {start:0}
-  fscore = {start:heuristic(start, goal)}
-
-  # Create a priority queue to store the nodes to be explored
-  oheap = []
-  heapq.heappush(oheap, (fscore[start], start))
-
-  while oheap:
-    current = heapq.heappop(oheap)[1]
-
-    # If the current node is the goal, return the path
-    if current == goal:
-      data = []
-      while current in came_from:
-        data.append(current)
-        current = came_from[current]
-      return data
-    
-    # Mark the current node as closed
-    close_set.add(current)
-
-    for neighbor in get_neighbors(array, current):
-      tentative_g_score = gscore[current] + heuristic(current, neighbor)
-
-      if 0 <= neighbor[0] < array.shape[0]:
-        if 0 <= neighbor[1] < array.shape[1]:                
-          if array[neighbor[0]][neighbor[1]] > 0:
-            continue
-        else:
-            # array bound y walls
-            continue
-      else:
-        # array bound x walls
-        continue
-
-      if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
-        continue
-
-      if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1]for i in oheap]:
-        # Update the g_score and f_score of the neighbor
-        gscore[neighbor] = tentative_g_score
-        fscore[neighbor] = tentative_g_score + heuristic(neighbor, goal)
-        # Add the neighbor to the priority queue
-        heapq.heappush(oheap, (fscore[neighbor], neighbor))
-        # Add the neighbor to the came_from map
-        came_from[neighbor] = current
-
   # If the goal is not reachable, return False
   return False
 
-def dijkstra(array, start, goal):
-  """Dijkstra's algorithm for finding the shortest path between two points in a graph.
+def astar(array, start, goal):
+  """A* algorithm for finding the shortest path between two points in a graph.
 
   Parameters
   ----------
@@ -236,6 +164,63 @@ def dijkstra(array, start, goal):
   # If the goal is not reachable, return False
   return False
 
+def astar_with_turns(array, start, goal):
+  """Dijkstra's algorithm for finding the shortest path between two points in a graph, with the fewest number of turns.
+
+  Parameters
+  ----------
+  array : 2D array representing the graph
+  start : Tuple representing the start node
+  goal : Tuple representing the goal node
+
+  Returns
+  -------
+  array : Array of tuples representing the shortest path from start to goal
+  """
+
+  # Initialize the data structures
+  close_set = set()
+  came_from = {}
+  g_score = {start: 0}
+  turn_score = {start: 0}
+  f_score = {start: g_score[start] + turn_score[start] + heuristic(start, goal)}
+
+  # Create a priority queue to store the nodes to be explored
+  oheap = []
+  heapq.heappush(oheap, (f_score[start], start))
+
+  # While there are nodes to be explored
+  while oheap:
+    # Get the node with the lowest f_score
+    current = heapq.heappop(oheap)[1]
+
+    # If the current node is the goal, return the path
+    if current == goal:
+      data = []
+      while current in came_from:
+        data.append(current)
+        current = came_from[current]
+      return data
+
+    # Mark the current node as closed
+    close_set.add(current)
+
+    # For each neighbor of the current node
+    for neighbor in get_neighbors(array, current):
+      # If the neighbor is not closed and the tentative g_score is less than the current g_score
+      if neighbor not in close_set and g_score[current] + array[neighbor[0]][neighbor[1]] < g_score.get(neighbor, float('inf')):
+        # Update the g_score and turn_score of the neighbor
+        g_score[neighbor] = g_score[current] + array[neighbor[0]][neighbor[1]]
+        turn_score[neighbor] = turn_score[current] + 1
+        f_score[neighbor] = g_score[neighbor] + turn_score[neighbor] + heuristic(neighbor, goal)
+        # Add the neighbor to the priority queue
+        heapq.heappush(oheap, (f_score[neighbor], neighbor))
+        # Add the neighbor to the came_from map
+        came_from[neighbor] = current
+
+  # If the goal is not reachable, return False
+  return False
+
 def plot_path(path, start, goal):
   """Plot route graphically
 
@@ -269,7 +254,7 @@ def main():
 
   generate_field(2023, 0.3)
 
-  path = dijkstra(frc_field, start, goal)
+  path = astar_with_turns(frc_field, start, goal)
   path = path + [start]
   path = path[::-1]
 
