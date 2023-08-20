@@ -30,8 +30,12 @@ def generate_field(year, robot_radius):
     frc_field = np.load(field_cache_file, allow_pickle=True)
     return frc_field
   
-  field_json_file = os.path.join(os.path.realpath(__file__), 'fields', str(year) + '.json')
-  with open('fields/' + str(year) + '.json') as file:
+  field_json_file = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 
+    'fields', 
+    str(year) + '.json'
+  )
+  with open(field_json_file) as file:
     import json
     from shapely.geometry import Point
     from shapely.geometry.polygon import Polygon
