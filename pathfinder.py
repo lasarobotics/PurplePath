@@ -3,6 +3,7 @@
 import numpy as np
 import heapq
 from scipy import interpolate
+from scipy.spatial.distance import cdist
 
 def generate_field(year, robot_radius):
   """Generate field for year
@@ -19,7 +20,7 @@ def generate_field(year, robot_radius):
   
   import os
   
-  frc_field = np.full((1650, 810), 0)
+  field = np.full((1650, 810), 0)
   
   field_cache_file = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -27,8 +28,8 @@ def generate_field(year, robot_radius):
     str(year) + '.npy'
   )
   if os.path.isfile(field_cache_file):
-    frc_field = np.load(field_cache_file, allow_pickle=True)
-    return frc_field
+    field = np.load(field_cache_file, allow_pickle=True)
+    return field
   
   field_json_file = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 
@@ -42,21 +43,21 @@ def generate_field(year, robot_radius):
     obstacles = json.load(file)['obstacles']
     print(obstacles)
     
-    for idx in np.ndindex(frc_field.shape):
+    for idx in np.ndindex(field.shape):
       point = Point(idx[0] / 100, idx[1] / 100)
       for obstacle in obstacles:
         print("Checking if " + str(point) + " is within " + obstacle['name'])
         obstacle_polygon = Polygon(obstacle['vertices'])
         if obstacle_polygon.contains(point):
           print(str(point) + " is within " + obstacle['name'] + "!")
-          frc_field[idx] = 1
+          field[idx] = 1
           break
         if obstacle_polygon.buffer(obstacle['buffer_distance'] + robot_radius).contains(point):
           print(str(point) + " is within buffer range of " + obstacle['name'] + "!")
-          frc_field[idx] = 2
+          field[idx] = 2
           break
-    np.save(field_cache_file, frc_field, allow_pickle=True)
-    return frc_field
+    np.save(field_cache_file, field, allow_pickle=True)
+    return field
 
 def m_to_cm(x, y):
   """Convert xy coordinate in meters to centimeters
@@ -99,6 +100,7 @@ def distance(a, b):
   int or float
     Estimated distance to goal
   """
+  
   return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
 def manhattan_distance(a, b):
@@ -114,11 +116,8 @@ def manhattan_distance(a, b):
   int or float
     Estimated distance to goal
   """
-  
-  x_diff = a[0] - b[0]
-  y_diff = a[1] - b[1]
 
-  return abs(x_diff) + abs(y_diff)
+  return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 def get_neighbors(field, node, goal):
   """Returns the neighbors of a given node in the field.
@@ -132,7 +131,7 @@ def get_neighbors(field, node, goal):
   -------
   array : List of tuples representing the neighbors of the node
   """
-
+  
   increment = 1 if manhattan_distance(node, goal) < 10 else 10
   neighbors = []
   x, y = node
@@ -140,12 +139,9 @@ def get_neighbors(field, node, goal):
     for j in (-increment, 0, +increment):
       if i == 0 and j == 0: continue
       neighbor = (x + i, y + j)
-      if 0 <= neighbor[0] < field.shape[0] and 0 <= neighbor[1] < field.shape[1] and field[neighbor[0]][neighbor[1]] == 0:
+      if 0 <= neighbor[0] < field.shape[0] and 0 <= neighbor[1] < field.shape[1] and field[neighbor] == 0:
         neighbors.append(neighbor)
-  return neighbors
-
-  # If the goal is not reachable, return False
-  return False
+  return neighbors, increment
 
 def is_turn(current, neighbor, previous):
   """Checks if the neighbor is a turn from the current point, given the previous point
@@ -179,6 +175,8 @@ def astar(field, start, goal):
   -------
   array : Array of tuples representing the shortest path from start to goal
   """
+  
+  neighbor_distance = { 0: 1.4, 1: 1.0, 2: 1.4, 3: 1.0, 4: 1.0, 5: 1.4, 6: 1.0, 7: 1.4 }
 
   ## List of positions that have already been considered
   close_set = set()
@@ -188,7 +186,7 @@ def astar(field, start, goal):
   
   # Scores
   g_score = { start: 0 }
-  f_score = { start: g_score[start] + manhattan_distance(start, goal) }
+  f_score = { start: g_score[start] + distance(start, goal) }
 
   # Create a priority queue to store the nodes to be explored
   oheap = []
@@ -209,16 +207,19 @@ def astar(field, start, goal):
 
     # Mark the current node as closed
     close_set.add(current)
+    
+    # Get neighbors
+    neighbors, increment = get_neighbors(field, current, goal)
 
     # For each neighbor of the current node
-    for neighbor in get_neighbors(field, current, goal):
+    for idx, neighbor in enumerate(neighbors):
       # If the neighbor is not closed and the current f_score is greater than the neighbor f_score
       if neighbor not in close_set and f_score[current] > f_score.get(neighbor, 0):
         # Add the neighbor to the came_from map
         came_from[neighbor] = current
         # Update the g_score and f_score of the neighbor
-        g_score[neighbor] = g_score[current] + manhattan_distance(neighbor, start)
-        f_score[neighbor] = g_score[neighbor] + manhattan_distance(neighbor, goal)
+        g_score[neighbor] = g_score[current] + neighbor_distance.get(idx) * increment
+        f_score[neighbor] = g_score[neighbor] + distance(neighbor, goal)
         # Add the neighbor to the priority queue
         heapq.heappush(oheap, (f_score[neighbor], neighbor))
 
@@ -242,7 +243,7 @@ def smooth_path(path):
 
   # Smooth the path using spline interpolation
   tck, *rest = interpolate.splprep([coords[0], coords[1]])
-  x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 25), tck)
+  x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 30), tck)
 
   return list(zip(x_smooth, y_smooth))
 

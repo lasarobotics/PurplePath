@@ -142,6 +142,7 @@ fabric.properties
 __pycache__/
 *.py[cod]
 *$py.class
+*.npy
 
 # C extensions
 *.so
