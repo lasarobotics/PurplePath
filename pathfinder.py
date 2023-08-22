@@ -126,10 +126,12 @@ def get_neighbors(field, node, goal):
   ----------
   field : 2D array representing the field
   node : Tuple representing the node
+  goal : Tuple representing goal
 
   Returns
   -------
   array : List of tuples representing the neighbors of the node
+  int : Increment used to find neighbors
   """
   
   increment = 1 if manhattan_distance(node, goal) < 10 else 10
@@ -139,7 +141,7 @@ def get_neighbors(field, node, goal):
     for j in (-increment, 0, +increment):
       if i == 0 and j == 0: continue
       neighbor = (x + i, y + j)
-      if 0 <= neighbor[0] < field.shape[0] and 0 <= neighbor[1] < field.shape[1] and field[neighbor] == 0:
+      if 0 <= neighbor[0] < field.shape[0] and 0 <= neighbor[1] < field.shape[1]:
         neighbors.append(neighbor)
   return neighbors, increment
 
@@ -176,7 +178,7 @@ def astar(field, start, goal):
   array : Array of tuples representing the shortest path from start to goal
   """
   
-  neighbor_distance = { 0: 1.4, 1: 1.0, 2: 1.4, 3: 1.0, 4: 1.0, 5: 1.4, 6: 1.0, 7: 1.4 }
+  neighbor_distances = { 0: 1.4, 1: 1.0, 2: 1.4, 3: 1.0, 4: 1.0, 5: 1.4, 6: 1.0, 7: 1.4 }
 
   ## List of positions that have already been considered
   close_set = set()
@@ -213,13 +215,16 @@ def astar(field, start, goal):
 
     # For each neighbor of the current node
     for idx, neighbor in enumerate(neighbors):
+      neighbor_distance = distance(neighbor, goal)
+      if neighbor_distance > f_score[current] or field[neighbor] != 0:
+        continue
       # If the neighbor is not closed and the current f_score is greater than the neighbor f_score
       if neighbor not in close_set and f_score[current] > f_score.get(neighbor, 0):
         # Add the neighbor to the came_from map
         came_from[neighbor] = current
         # Update the g_score and f_score of the neighbor
-        g_score[neighbor] = g_score[current] + neighbor_distance.get(idx) * increment
-        f_score[neighbor] = g_score[neighbor] + distance(neighbor, goal)
+        g_score[neighbor] = g_score[current] + neighbor_distances.get(idx) * increment
+        f_score[neighbor] = g_score[neighbor] + neighbor_distance
         # Add the neighbor to the priority queue
         heapq.heappush(oheap, (f_score[neighbor], neighbor))
 
@@ -265,9 +270,9 @@ def plot_path(field, path, start, goal):
   fig, ax = plt.subplots()
   cmap = mcolors.ListedColormap(['green', 'grey', 'lightgrey'])
   ax.imshow(field, cmap=cmap)
-  ax.scatter(start[1], start[0], marker="*", color="yellow", s=200)
-  ax.scatter(goal[1], goal[0], marker="*", color="purple", s=200)
-  ax.plot(coords[1], coords[0], color="blue")
+  ax.scatter(start[1], start[0], marker='*', color='yellow', s=200)
+  ax.scatter(goal[1], goal[0], marker='*', color='purple', s=200)
+  ax.plot(coords[1], coords[0], color='blue')
   plt.show()
 
 
