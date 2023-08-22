@@ -3,7 +3,6 @@
 import numpy as np
 import heapq
 from scipy import interpolate
-from scipy.spatial.distance import cdist
 
 def generate_field(year, robot_radius):
   """Generate field for year
