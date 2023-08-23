@@ -1,8 +1,6 @@
 #!/bin/python
 
 import numpy as np
-import heapq
-from scipy import interpolate
 
 def generate_field(year, robot_radius):
   """Generate field for year
@@ -19,7 +17,7 @@ def generate_field(year, robot_radius):
   
   import os
   
-  field = np.full((1650, 810), 0)
+  field = np.full((1651, 811), 0)
   
   field_cache_file = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -133,7 +131,7 @@ def get_neighbors(field, node, goal):
   int : Increment used to find neighbors
   """
   
-  increment = 1 if manhattan_distance(node, goal) < 10 else 10
+  increment = 1 if manhattan_distance(node, goal) < 50 else 25
   neighbors = []
   x, y = node
   for i in (-increment, 0, +increment):
@@ -164,19 +162,23 @@ def is_turn(current, neighbor, previous):
   return current_direction != new_direction
 
 def astar(field, start, goal):
-  """A* algorithm for finding the shortest path between two points in a graph, with the fewest number of turns.
+  """A* algorithm for finding the shortest path between two points on the field
 
   Parameters
   ----------
   field : 2D array representing the field
-  start : Tuple representing the start node
-  goal : Tuple representing the goal node
+  start : Tuple representing the start point
+  goal : Tuple representing the goal point
 
   Returns
   -------
   array : Array of tuples representing the shortest path from start to goal
   """
   
+  # Import dependencies
+  import heapq
+  
+  # Distance weights to neighbor nodes
   neighbor_distances = { 0: 1.4, 1: 1.0, 2: 1.4, 3: 1.0, 4: 1.0, 5: 1.4, 6: 1.0, 7: 1.4 }
 
   ## List of positions that have already been considered
@@ -187,7 +189,7 @@ def astar(field, start, goal):
   
   # Scores
   g_score = { start: 0 }
-  f_score = { start: g_score[start] + distance(start, goal) }
+  f_score = { start: distance(start, goal) }
 
   # Create a priority queue to store the nodes to be explored
   oheap = []
@@ -204,6 +206,7 @@ def astar(field, start, goal):
       while current in came_from:
         path.append(current)
         current = came_from[current]
+      path.append(start)
       return path[::-1]
 
     # Mark the current node as closed
@@ -214,8 +217,8 @@ def astar(field, start, goal):
 
     # For each neighbor of the current node
     for idx, neighbor in enumerate(neighbors):
-      neighbor_distance = distance(neighbor, goal)
-      if neighbor_distance > f_score[current] or field[neighbor] != 0:
+      neighbor_goal_distance = distance(neighbor, goal)
+      if neighbor_goal_distance > f_score[current] or field[neighbor] != 0:
         continue
       # If the neighbor is not closed and the current f_score is greater than the neighbor f_score
       if neighbor not in close_set and f_score[current] > f_score.get(neighbor, 0):
@@ -223,7 +226,7 @@ def astar(field, start, goal):
         came_from[neighbor] = current
         # Update the g_score and f_score of the neighbor
         g_score[neighbor] = g_score[current] + neighbor_distances.get(idx) * increment
-        f_score[neighbor] = g_score[neighbor] + neighbor_distance
+        f_score[neighbor] = g_score[neighbor] + neighbor_goal_distance
         # Add the neighbor to the priority queue
         heapq.heappush(oheap, (f_score[neighbor], neighbor))
 
@@ -241,13 +244,15 @@ def smooth_path(path):
   -------
   array : Array of points representing smoothed path
   """
+  
+  from scipy import interpolate
 
   # Extract x and y coordinates from path
   coords = list(zip(*path))
 
   # Smooth the path using spline interpolation
   tck, *rest = interpolate.splprep([coords[0], coords[1]])
-  x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 30), tck)
+  x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 100), tck)
 
   return list(zip(x_smooth, y_smooth))
 
@@ -279,18 +284,18 @@ def main():
   # Generate FRC field
   field = generate_field(2023, 0.35)
   
-  # start point and goal
-  start = m_to_cm(14.00, 0.50)
+  # Start point and goal
+  start = m_to_cm(8.00, 2.50)
   goal = m_to_cm(15.10, 6.75)
   # start = m_to_cm(8.00, 5.00)
-  # goal = m_to_cm(14.50, 3.50)
+  # goal = m_to_cm(14.50, 1.50)
 
-  # Calculate and smooth path
+  # Calculate path
   path = astar(field, start, goal)
-  path = smooth_path(path)
+  path = path[0::2]
 
   # Visualize path
-  #plot_path(field, path, start, goal)
+  plot_path(field, path, start, goal)
 
 if __name__ == "__main__":
   main()
