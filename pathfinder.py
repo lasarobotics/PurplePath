@@ -162,7 +162,7 @@ def is_turn(current, neighbor, previous):
   return current_direction != new_direction
 
 def astar(field, start, goal):
-  """A* algorithm for finding the shortest path between two points on the field
+  """A* algorithm for finding the shortest path between two points on the field with minimal turns
 
   Parameters
   ----------
@@ -185,9 +185,10 @@ def astar(field, start, goal):
   close_set = set()
   
   # Dictionary containing all routes we've taken
-  came_from = {}
+  came_from = { start: start }
   
   # Scores
+  turn_penalty = 10
   g_score = { start: 0 }
   f_score = { start: distance(start, goal) }
 
@@ -205,8 +206,8 @@ def astar(field, start, goal):
       path = []
       while current in came_from:
         path.append(current)
+        if current == start: break
         current = came_from[current]
-      path.append(start)
       return path[::-1]
 
     # Mark the current node as closed
@@ -217,8 +218,12 @@ def astar(field, start, goal):
 
     # For each neighbor of the current node
     for idx, neighbor in enumerate(neighbors):
+      # If neighbor is not clear, skip
+      if field[neighbor] != 0:
+        continue
+      # If neighbor is estimated to be a worse path, skip
       neighbor_goal_distance = distance(neighbor, goal)
-      if neighbor_goal_distance > f_score[current] or field[neighbor] != 0:
+      if neighbor_goal_distance > f_score[current]:
         continue
       # If the neighbor is not closed and the current f_score is greater than the neighbor f_score
       if neighbor not in close_set and f_score[current] > f_score.get(neighbor, 0):
@@ -227,6 +232,9 @@ def astar(field, start, goal):
         # Update the g_score and f_score of the neighbor
         g_score[neighbor] = g_score[current] + neighbor_distances.get(idx) * increment
         f_score[neighbor] = g_score[neighbor] + neighbor_goal_distance
+        # Penalize turns
+        if is_turn(current, neighbor, came_from[current]):
+          f_score[neighbor] += turn_penalty
         # Add the neighbor to the priority queue
         heapq.heappush(oheap, (f_score[neighbor], neighbor))
 
@@ -264,6 +272,7 @@ def plot_path(field, path, start, goal):
   field : 2D array representing field
   path : Array of tuples representing path
   """
+
   import matplotlib.pyplot as plt
   import matplotlib.colors as mcolors
 
@@ -292,7 +301,6 @@ def main():
 
   # Calculate path
   path = astar(field, start, goal)
-  path = path[0::2]
 
   # Visualize path
   plot_path(field, path, start, goal)
