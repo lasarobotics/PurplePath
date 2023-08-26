@@ -1,6 +1,8 @@
 #!/bin/python
 
+import heapq
 import numpy as np
+from scipy import interpolate
 
 def generate_field(year, robot_radius):
   """Generate field for year
@@ -56,41 +58,43 @@ def generate_field(year, robot_radius):
     np.save(field_cache_file, field, allow_pickle=True)
     return field
 
-def m_to_cm(x, y):
+def m_to_cm(point):
   """Convert xy coordinate in meters to centimeters
   
   Parameters
   ----------
-  x : x value
-  y : y value
+  point : Tuple representing coordinates
 
   Returns
   -------
   tuple representing point with cm units
   """
-  return int(x * 100), int(y * 100)
 
-def cm_to_m(x, y):
+  x, y = point
+  return (int(x * 100), int(y * 100))
+
+def cm_to_m(point):
   """Convert xy coordinate in centimeters to meters
   
   Parameters
   ----------
-  x : x value
-  y : y value
+  point : Tuple representing coordinates
 
   Returns
   -------
   tuple representing point with cm units
   """
-  return float(x / 100), float(y / 100)
+
+  x, y = point
+  return (float(x / 100), float(y / 100))
 
 def distance(a, b):
   """Calculates the Pythagorean distance between two points
   
   Parameters
   ----------
-  a : tuple representing point
-  b : tuple representing point
+  a : tuple representing point in centimeters
+  b : tuple representing point in centimeters
 
   Returns
   -------
@@ -105,12 +109,12 @@ def manhattan_distance(a, b):
   
   Parameters
   ----------
-  a : tuple representing point
-  b : tuple representing point
+  a : tuple representing point in centimeters
+  b : tuple representing point in centimeters
 
   Returns
   -------
-  int or float
+  int or float :
     Estimated distance to goal
   """
 
@@ -122,8 +126,8 @@ def get_neighbors(field, node, goal):
   Parameters
   ----------
   field : 2D array representing the field
-  node : Tuple representing the node
-  goal : Tuple representing goal
+  node : Tuple representing the node in centimeters
+  goal : Tuple representing goal in centimeters
 
   Returns
   -------
@@ -148,8 +152,8 @@ def is_turn(current, neighbor, previous):
   Parameters
   ----------
   current : Tuple representing the current point
-  neighbor : Tuple representing the neighbor point
-  previous : Tuple representing the previous point
+  neighbor : Tuple representing the neighbor point in centimeters
+  previous : Tuple representing the previous point in centimeters
 
   Returns
   -------
@@ -167,16 +171,13 @@ def astar(field, start, goal):
   Parameters
   ----------
   field : 2D array representing the field
-  start : Tuple representing the start point
-  goal : Tuple representing the goal point
+  start : Tuple representing the start point in centimeters
+  goal : Tuple representing the goal point in centimeters
 
   Returns
   -------
   array : Array of tuples representing the shortest path from start to goal
   """
-  
-  # Import dependencies
-  import heapq
   
   # Distance weights to neighbor nodes
   neighbor_distances = { 0: 1.4, 1: 1.0, 2: 1.4, 3: 1.0, 4: 1.0, 5: 1.4, 6: 1.0, 7: 1.4 }
@@ -205,6 +206,7 @@ def astar(field, start, goal):
     if current == goal:
       path = []
       while current in came_from:
+        # Convert units back to meters
         path.append(current)
         if current == start: break
         current = came_from[current]
@@ -246,20 +248,18 @@ def smooth_path(path):
 
   Parameters
   ----------
-  path : Array of points representing path
+  path : Array of points representing path in centimeters
 
   Returns
   -------
   array : Array of points representing smoothed path
   """
-  
-  from scipy import interpolate
 
   # Extract x and y coordinates from path
   coords = list(zip(*path))
 
   # Smooth the path using spline interpolation
-  tck, *rest = interpolate.splprep([coords[0], coords[1]])
+  tck, *rest = interpolate.splprep([coords[0], coords[1]], s=250)
   x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 100), tck)
 
   return list(zip(x_smooth, y_smooth))
@@ -270,7 +270,7 @@ def plot_path(field, path, start, goal):
   Parameters
   ----------
   field : 2D array representing field
-  path : Array of tuples representing path
+  path : Array of tuples representing path in centimeters
   """
 
   import matplotlib.pyplot as plt
@@ -279,31 +279,37 @@ def plot_path(field, path, start, goal):
   # Extract x and y coordinates from path
   coords = list(zip(*path))
   
-  # plot map and path
+  # Plot field and path
   fig, ax = plt.subplots()
   cmap = mcolors.ListedColormap(['green', 'grey', 'lightgrey'])
   ax.imshow(field, cmap=cmap)
   ax.scatter(start[1], start[0], marker='*', color='yellow', s=200)
   ax.scatter(goal[1], goal[0], marker='*', color='purple', s=200)
-  ax.plot(coords[1], coords[0], color='blue')
+  ax.plot(coords[1], coords[0], color='black')
   plt.show()
 
 
-def main():
+if __name__ == "__main__":
+  # Example of how to use PurplePath
+
   # Generate FRC field
   field = generate_field(2023, 0.35)
   
   # Start point and goal
-  start = m_to_cm(8.00, 2.50)
-  goal = m_to_cm(15.10, 6.75)
-  # start = m_to_cm(8.00, 5.00)
-  # goal = m_to_cm(14.50, 1.50)
+  start = m_to_cm((2.50, 0.50))
+  goal = m_to_cm((15.10, 6.75))
+  # start = m_to_cm((8.00, 5.00))
+  # goal = m_to_cm((14.50, 1.50))
 
   # Calculate path
   path = astar(field, start, goal)
+  path = smooth_path(path)
+
+  # Print path
+  print(path)
 
   # Visualize path
   plot_path(field, path, start, goal)
 
-if __name__ == "__main__":
-  main()
+  # Convert path units back to meters
+  path = [cm_to_m(point) for point in path]
