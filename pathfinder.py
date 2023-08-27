@@ -135,7 +135,7 @@ def get_neighbors(field, node, goal):
   int : Increment used to find neighbors
   """
   
-  increment = 1 if manhattan_distance(node, goal) < 50 else 25
+  increment = 1 if manhattan_distance(node, goal) < 35 else 25
   neighbors = []
   x, y = node
   for i in (-increment, 0, +increment):
@@ -176,7 +176,7 @@ def astar(field, start, goal):
 
   Returns
   -------
-  array : Array of tuples representing the shortest path from start to goal
+  array : Array of tuples representing the shortest path from start to goal in centimeters
   """
   
   # Distance weights to neighbor nodes
@@ -206,7 +206,6 @@ def astar(field, start, goal):
     if current == goal:
       path = []
       while current in came_from:
-        # Convert units back to meters
         path.append(current)
         if current == start: break
         current = came_from[current]
@@ -217,6 +216,9 @@ def astar(field, start, goal):
     
     # Get neighbors
     neighbors, increment = get_neighbors(field, current, goal)
+
+    # Scored neighbor heap
+    scored_neighbors = []
 
     # For each neighbor of the current node
     for idx, neighbor in enumerate(neighbors):
@@ -229,6 +231,7 @@ def astar(field, start, goal):
         continue
       # If the neighbor is not closed and the current f_score is greater than the neighbor f_score
       if neighbor not in close_set and f_score[current] > f_score.get(neighbor, 0):
+        field[neighbor] = 3
         # Add the neighbor to the came_from map
         came_from[neighbor] = current
         # Update the g_score and f_score of the neighbor
@@ -237,8 +240,12 @@ def astar(field, start, goal):
         # Penalize turns
         if is_turn(current, neighbor, came_from[current]):
           f_score[neighbor] += turn_penalty
-        # Add the neighbor to the priority queue
-        heapq.heappush(oheap, (f_score[neighbor], neighbor))
+        # Add the neighbor to list of scored neighbors
+        heapq.heappush(scored_neighbors, (f_score[neighbor], neighbor))
+    
+    # Add best 2 neighbors to priority queue
+    for i in range(min(len(scored_neighbors), 2)):
+      heapq.heappush(oheap, heapq.heappop(scored_neighbors))
 
   # If the goal is not reachable, return False
   return False
@@ -281,7 +288,7 @@ def plot_path(field, path, start, goal):
   
   # Plot field and path
   fig, ax = plt.subplots()
-  cmap = mcolors.ListedColormap(['green', 'grey', 'lightgrey'])
+  cmap = mcolors.ListedColormap(['green', 'grey', 'lightgrey', 'red'])
   ax.imshow(field, cmap=cmap)
   ax.scatter(start[1], start[0], marker='*', color='yellow', s=200)
   ax.scatter(goal[1], goal[0], marker='*', color='purple', s=200)

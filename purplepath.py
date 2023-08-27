@@ -2,29 +2,12 @@
 
 import time
 import psutil
+import numpy as np
 import multiprocessing as mp
+import concurrent.futures
 import pathfinder
 
-field = pathfinder.generate_field(2023, 0.35)
-
-start = pathfinder.m_to_cm((8.00, 2.50))
-goal = pathfinder.m_to_cm((15.10, 6.75))
-
-fast_cores = [4, 5, 6, 7]
-
-def start_process(core):
-  """Start pathfinding process on specific core
-
-  Parameters
-  ----------
-  core : Core number to run process on
-  """
-
-  process = mp.Process(target=find_path, args=(field, queue))
-  process.start()
-  psutil.Process(process.pid).cpu_affinity([core])
-
-def find_path(field, queue):
+def find_path(field, start, goal):
   """Find path on FRC field
 
   Parameters
@@ -33,31 +16,44 @@ def find_path(field, queue):
   queue : Queue of tuples containing start/goal points to calculate path
   """
 
-  # Infinite loop
-  while True:
-    # If queue is empty, skip this loop
-    if queue.empty(): continue
-    # Record start time
-    start_time = time.time()
-    # Get start and end point
-    start, goal = queue.get()
-    # Calculate path
-    path = pathfinder.astar(field, start, goal)
-    # Smooth path
-    path = pathfinder.smooth_path(path)
-    # Convert path from centimeters to meters
-    path = [pathfinder.cm_to_m(point) for point in path]
-    # Print execution time
-    print(time.time() - start_time)
+  # Record start time
+  start_time = time.time()
+  # Calculate path
+  path = pathfinder.astar(field, start, goal)
+  # Check if path found
+  if not path: return None
+  # Smooth path
+  path = pathfinder.smooth_path(path)
+  # Convert path from centimeters to meters
+  path = [pathfinder.cm_to_m(point) for point in path]
+  # Print execution time
+  print(time.time() - start_time)
+
+  return path
 
 if __name__ == "__main__":
-  # Job queue
-  queue = mp.Queue()
+  field = pathfinder.generate_field(2023, 0.35)
 
-  # Fill queue with dummy values
-  for i in range(5000):
-    queue.put((start, goal))
+  start = pathfinder.m_to_cm((8.00, 2.50))
+  goal = pathfinder.m_to_cm((15.10, 6.75))
 
-  # Start processes
-  for core in fast_cores:
-    start_process(core)
+  fast_cores = [4, 5, 6, 7]
+
+  # Set CPU affinity
+  psutil.Process().cpu_affinity(fast_cores)
+  
+  # Start worker processes
+  with concurrent.futures.ProcessPoolExecutor(max_workers=len(fast_cores)) as executor:
+    while True:
+      # Generate random point
+      x = np.random.uniform(0.0, 16.50)
+      y = np.random.uniform(0.0, 8.10)
+      point = pathfinder.m_to_cm((x, y))
+      # Skip if invalid
+      if field[point] != 0: continue
+      
+      # Submit path for calculation, get future result asynchronously
+      future = executor.submit(find_path, field, point, goal)
+
+      # Print result
+      print(future.result())
