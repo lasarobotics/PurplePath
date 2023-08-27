@@ -7,20 +7,26 @@ import multiprocessing as mp
 import concurrent.futures
 import pathfinder
 
+fast_cores = [4, 5, 6, 7]
+
 def find_path(field, start, goal):
   """Find path on FRC field
 
   Parameters
   ----------
-  field : 2D array representing field
-  queue : Queue of tuples containing start/goal points to calculate path
+  field : 2D array representing the field
+  start : Tuple representing the start point in centimeters
+  goal : Tuple representing the goal point in centimeters
   """
+
+  # Set CPU affinity
+  psutil.Process().cpu_affinity(fast_cores)
 
   # Record start time
   start_time = time.time()
   # Calculate path
   path = pathfinder.astar(field, start, goal)
-  # Check if path found
+  # Return None if path not found
   if not path: return None
   # Smooth path
   path = pathfinder.smooth_path(path)
@@ -36,11 +42,6 @@ if __name__ == "__main__":
 
   start = pathfinder.m_to_cm((8.00, 2.50))
   goal = pathfinder.m_to_cm((15.10, 6.75))
-
-  fast_cores = [4, 5, 6, 7]
-
-  # Set CPU affinity
-  psutil.Process().cpu_affinity(fast_cores)
   
   # Start worker processes
   with concurrent.futures.ProcessPoolExecutor(max_workers=len(fast_cores)) as executor:
