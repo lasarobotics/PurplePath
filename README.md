@@ -1,0 +1,2 @@
+# PurplePath
+Python script that quickly generates valid paths for a robot using the A* algorithm. The code runs on a coprocessor and communicates important information (such as the current pose) with the robot using NetworkTables.

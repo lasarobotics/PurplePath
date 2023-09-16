@@ -6,6 +6,7 @@ import numpy as np
 import multiprocessing as mp
 import concurrent.futures
 import pathfinder
+from networktables import NetworkTables
 
 fast_cores = [4, 5, 6, 7]
 
@@ -38,6 +39,15 @@ def find_path(field, start, goal):
   return path
 
 if __name__ == "__main__":
+  # Initalize Network Tables
+  ip = "localhost" # Need to change to actual ip
+  table_name = "DriveSubsystem"
+  pose_entry = "Pose"
+  
+  NetworkTables.initialize(server=ip)
+  table = NetworkTables.getTable(table_name)
+  
+  # Generate field
   field = pathfinder.generate_field(2023, 0.35)
 
   start = pathfinder.m_to_cm((8.00, 2.50))
@@ -46,15 +56,15 @@ if __name__ == "__main__":
   # Start worker processes
   with concurrent.futures.ProcessPoolExecutor(max_workers=len(fast_cores)) as executor:
     while True:
-      # Generate random point
-      x = np.random.uniform(0.0, 16.50)
-      y = np.random.uniform(0.0, 8.10)
-      point = pathfinder.m_to_cm((x, y))
+      # Get robot pose via NetworkTables
+      pose = tuple(table.getNumberArray(pose_entry, (8.00, 2.50)))
+      pose = pathfinder.m_to_cm(pose)
+
       # Skip if invalid
-      if field[point] != 0: continue
+      if field[pose] != 0: continue
       
       # Submit path for calculation, get future result asynchronously
-      future = executor.submit(find_path, field, point, goal)
+      future = executor.submit(find_path, field, pose, goal)
 
       # Print result
       print(future.result())
