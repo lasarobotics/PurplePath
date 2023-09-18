@@ -231,7 +231,6 @@ def astar(field, start, goal):
         continue
       # If the neighbor is not closed and the current f_score is greater than the neighbor f_score
       if neighbor not in close_set and f_score[current] > f_score.get(neighbor, 0):
-        field[neighbor] = 3
         # Add the neighbor to the came_from map
         came_from[neighbor] = current
         # Update the g_score and f_score of the neighbor
@@ -266,7 +265,7 @@ def smooth_path(path):
   coords = list(zip(*path))
 
   # Smooth the path using spline interpolation
-  tck, *rest = interpolate.splprep([coords[0], coords[1]], s=250)
+  tck, *rest = interpolate.splprep([coords[0], coords[1]], s=500)
   x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 100), tck)
 
   return list(zip(x_smooth, y_smooth))
@@ -288,7 +287,7 @@ def plot_path(field, path, start, goal):
   
   # Plot field and path
   fig, ax = plt.subplots()
-  cmap = mcolors.ListedColormap(['green', 'grey', 'lightgrey', 'red'])
+  cmap = mcolors.ListedColormap(['green', 'grey', 'lightgrey'])
   ax.imshow(field, cmap=cmap)
   ax.scatter(start[1], start[0], marker='*', color='yellow', s=200)
   ax.scatter(goal[1], goal[0], marker='*', color='purple', s=200)

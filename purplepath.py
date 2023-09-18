@@ -3,12 +3,11 @@
 import time
 import psutil
 import numpy as np
-import multiprocessing as mp
 import concurrent.futures
 import pathfinder
 from networktables import NetworkTables
 
-fast_cores = [4, 5, 6, 7]
+fast_cores = [4, 5, 10, 11]
 
 def find_path(field, start, goal):
   """Find path on FRC field
@@ -40,7 +39,7 @@ def find_path(field, start, goal):
 
 if __name__ == "__main__":
   # Initalize Network Tables
-  ip = "localhost" # Need to change to actual ip
+  ip = "10.4.18.2"
   table_name = "DriveSubsystem"
   pose_entry = "Pose"
   
