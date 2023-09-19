@@ -18,8 +18,12 @@ def generate_field(year, robot_radius):
   """
   
   import os
+
+  FIELD_LENGTH = 16.50
+  FIELD_WIDTH = 8.10
+  WALL_BUFFER = 0.05
   
-  field = np.full((1651, 811), 0)
+  field = np.full((int(FIELD_LENGTH * 100) + 1, int(FIELD_WIDTH * 100) + 1), 0)
   
   field_cache_file = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -55,6 +59,12 @@ def generate_field(year, robot_radius):
           print(str(point) + " is within buffer range of " + obstacle['name'] + "!")
           field[idx] = 2
           break
+      if field[idx] != 0: continue
+      if point.x <= robot_radius + WALL_BUFFER or point.x >= FIELD_LENGTH - (robot_radius + WALL_BUFFER) \
+        or point.y <= robot_radius + WALL_BUFFER or point.y >= FIELD_WIDTH - (robot_radius + WALL_BUFFER):
+        print(str(point) + " is within buffer range of field walls!")
+        field[idx] = 2
+
     np.save(field_cache_file, field, allow_pickle=True)
     return field
 
@@ -315,7 +325,7 @@ if __name__ == "__main__":
   print(path)
 
   # Visualize path
-  plot_path(field, path, start, goal)
+  # plot_path(field, path, start, goal)
 
   # Convert path units back to meters
   path = [cm_to_m(point) for point in path]
