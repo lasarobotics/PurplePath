@@ -23,17 +23,22 @@ def generate_field(year, robot_radius):
   FIELD_WIDTH = 8.10
   WALL_BUFFER = 0.05
   
+  # 2D array representing field
   field = np.full((int(FIELD_LENGTH * 100) + 1, int(FIELD_WIDTH * 100) + 1), 0)
   
+  # Field cache file
   field_cache_file = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
     'fields',
     str(year) + '.npy'
   )
+  
+  # If field cache file exists, read it and return fieldbhgfdxfgfdravbbv
   if os.path.isfile(field_cache_file):
     field = np.load(field_cache_file, allow_pickle=True)
     return field
   
+  # Field json file
   field_json_file = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 
     'fields', 
@@ -43,28 +48,40 @@ def generate_field(year, robot_radius):
     import json
     from shapely.geometry import Point
     from shapely.geometry.polygon import Polygon
+    
+    # Read obstacles from file
     obstacles = json.load(file)['obstacles']
+    obstacles = [
+      (obstacle['name'], obstacle['buffer_distance'], Polygon(obstacle['vertices']))
+      for obstacle in obstacles
+    ]
     print(obstacles)
     
+    # Iterate over every square cm
     for idx in np.ndindex(field.shape):
       point = Point(idx[0] / 100, idx[1] / 100)
-      for obstacle in obstacles:
-        print("Checking if " + str(point) + " is within " + obstacle['name'])
-        obstacle_polygon = Polygon(obstacle['vertices'])
-        if obstacle_polygon.contains(point):
-          print(str(point) + " is within " + obstacle['name'] + "!")
+      # Iterate over each obstacle
+      for name, buffer_distance, shape in obstacles:
+        # Check if point is within obstacle
+        print("Checking if " + str(point) + " is within " + name)
+        if shape.contains(point):
+          print(str(point) + " is within " + name + "!")
           field[idx] = 1
           break
-        if obstacle_polygon.buffer(obstacle['buffer_distance'] + robot_radius).contains(point):
-          print(str(point) + " is within buffer range of " + obstacle['name'] + "!")
+        # Check if point is within buffer range of obstacle
+        if shape.buffer(buffer_distance + robot_radius).contains(point):
+          print(str(point) + " is within buffer range of " + name + "!")
           field[idx] = 2
           break
+      # If point has already been identified as obstacle or buffer zone, continue
       if field[idx] != 0: continue
+      # Check if point is close to field walls
       if point.x <= robot_radius + WALL_BUFFER or point.x >= FIELD_LENGTH - (robot_radius + WALL_BUFFER) \
         or point.y <= robot_radius + WALL_BUFFER or point.y >= FIELD_WIDTH - (robot_radius + WALL_BUFFER):
         print(str(point) + " is within buffer range of field walls!")
         field[idx] = 2
 
+    # Save field into cache file and return
     np.save(field_cache_file, field, allow_pickle=True)
     return field
 
