@@ -1,5 +1,6 @@
 #!/bin/python
 
+import json
 import heapq
 import numpy as np
 from scipy import interpolate
@@ -7,14 +8,12 @@ from scipy import interpolate
 def generate_field(year, robot_radius):
   """Generate field for year
 
-  Parameters
-  ----------
-  year : Field year to load
-  robot_radius: Radius of robot in meters
+  Args:
+      year (int): Field year to load
+      robot_radius (float): Radius of robot in meters
 
-  Returns
-  -------
-  array : 2D array representing FRC field with obstacles
+  Returns:
+      array: 2D array representing field
   """
   
   import os
@@ -87,14 +86,12 @@ def generate_field(year, robot_radius):
 
 def m_to_cm(point):
   """Convert xy coordinate in meters to centimeters
-  
-  Parameters
-  ----------
-  point : Tuple representing coordinates
 
-  Returns
-  -------
-  tuple representing point with cm units
+  Args:
+      point (tuple): Tuple representing coordinate
+
+  Returns:
+      tuple: tuple representing point in centimeters
   """
 
   x, y = point
@@ -102,14 +99,12 @@ def m_to_cm(point):
 
 def cm_to_m(point):
   """Convert xy coordinate in centimeters to meters
-  
-  Parameters
-  ----------
-  point : Tuple representing coordinates
 
-  Returns
-  -------
-  tuple representing point with cm units
+  Args:
+      point (tuple): Tuple representing coordinate
+
+  Returns:
+      tuple: tuple representing point in meters
   """
 
   x, y = point
@@ -117,32 +112,26 @@ def cm_to_m(point):
 
 def distance(a, b):
   """Calculates the Pythagorean distance between two points
-  
-  Parameters
-  ----------
-  a : tuple representing point in centimeters
-  b : tuple representing point in centimeters
 
-  Returns
-  -------
-  int or float
-    Estimated distance to goal
+  Args:
+      a (tuple): tuple representing point in centimeters
+      b (tuple): tuple representing point in centimeters
+
+  Returns:
+      int or float: Estimated distance to goal
   """
   
   return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
 def manhattan_distance(a, b):
-  """Calculates the Manhattan distance between two points
-  
-  Parameters
-  ----------
-  a : tuple representing point in centimeters
-  b : tuple representing point in centimeters
+  """Manhattan distance
 
-  Returns
-  -------
-  int or float :
-    Estimated distance to goal
+  Args:
+      a (tuple): tuple representing point in centimeters
+      b (tuple): tuple representing point in centimeters
+
+  Returns:
+      int or float: Estimated distance to goal
   """
 
   return abs(a[0] - b[0]) + abs(a[1] - b[1])
@@ -150,16 +139,14 @@ def manhattan_distance(a, b):
 def get_neighbors(field, node, goal):
   """Returns the neighbors of a given node in the field.
 
-  Parameters
-  ----------
-  field : 2D array representing the field
-  node : Tuple representing the node in centimeters
-  goal : Tuple representing goal in centimeters
+  Args:
+      field (tuple): 2D array representing the field
+      node (tuple): Tuple representing the node in centimeters
+      goal (tuple): Tuple representing goal in centimeters
 
-  Returns
-  -------
-  array : List of tuples representing the neighbors of the node
-  int : Increment used to find neighbors
+  Returns:
+      array: List of tuples representing the neighbors of the node
+      int: Increment used to find neighbors
   """
   
   increment = 1 if manhattan_distance(node, goal) < 35 else 25
@@ -174,17 +161,15 @@ def get_neighbors(field, node, goal):
   return neighbors, increment
 
 def is_turn(current, neighbor, previous):
-  """Checks if the neighbor is a turn from the current point, given the previous point
+  """Checks if going to the neighbor from the current point requires a turn, given the previous point
 
-  Parameters
-  ----------
-  current : Tuple representing the current point
-  neighbor : Tuple representing the neighbor point in centimeters
-  previous : Tuple representing the previous point in centimeters
+  Args:
+      current (tuple): Tuple representing current point in centimeters
+      neighbor (tuple): Tuple representing neighbor point in centimeters
+      previous (tuple): Tuple representing previous point in centimeters
 
-  Returns
-  -------
-  bool : True if the neighbor is a turn, False otherwise
+  Returns:
+      bool: True if neighbor is a turn, False otherwise
   """
 
   current_direction = (previous[0] - current[0], previous[1] - current[1])
@@ -195,15 +180,13 @@ def is_turn(current, neighbor, previous):
 def astar(field, start, goal):
   """A* algorithm for finding the shortest path between two points on the field with minimal turns
 
-  Parameters
-  ----------
-  field : 2D array representing the field
-  start : Tuple representing the start point in centimeters
-  goal : Tuple representing the goal point in centimeters
+  Args:
+      field (array): 2D array representing field
+      start (tuple): Tuple representing start point in centimeters
+      goal (tuple): Tuple representing goal point in centimeters
 
-  Returns
-  -------
-  array : Array of tuples representing the shortest path from start to goal in centimeters
+  Returns:
+      array: Array of tuples representing the shortest path from start to goal in centimeters
   """
   
   # Distance weights to neighbor nodes
@@ -279,13 +262,11 @@ def astar(field, start, goal):
 def smooth_path(path):
   """Smooth path
 
-  Parameters
-  ----------
-  path : Array of points representing path in centimeters
+  Args:
+      path (array): Array of tuples representing path in centimeters
 
-  Returns
-  -------
-  array : Array of points representing smoothed path
+  Returns:
+      array: Array of points in smoothed path
   """
 
   # Extract x and y coordinates from path
@@ -296,6 +277,21 @@ def smooth_path(path):
   x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 100), tck)
 
   return list(zip(x_smooth, y_smooth))
+
+def path_to_json(path):
+  """Convert path to JSON formatted string
+
+  Args:
+      path (array): List of tuples representing points
+
+  Returns:
+      str: JSON formatted string
+  """
+  path = [
+    { "x": point[0], "y": point[1] }
+    for point in path
+  ]
+  return json.dumps(path)
 
 def plot_path(field, path, start, goal):
   """Plot path graphically
@@ -329,20 +325,23 @@ if __name__ == "__main__":
   field = generate_field(2023, 0.35)
   
   # Start point and goal
-  start = m_to_cm((2.50, 0.50))
+  start = m_to_cm((7.50, 3.50))
   goal = m_to_cm((15.10, 6.75))
   # start = m_to_cm((8.00, 5.00))
-  # goal = m_to_cm((14.50, 1.50))
+  # goal = m_to_cm((14.50, 2.50))
 
   # Calculate path
   path = astar(field, start, goal)
   path = smooth_path(path)
 
-  # Print path
-  print(path)
-
   # Visualize path
-  # plot_path(field, path, start, goal)
+  #plot_path(field, path, start, goal)
 
   # Convert path units back to meters
   path = [cm_to_m(point) for point in path]
+  
+  # Convert path to JSON string
+  path_json = path_to_json(path)
+  
+  # Print JSON string
+  print(path_json)
