@@ -79,7 +79,8 @@ def generate_field(year, robot_radius):
         or point.y <= robot_radius + WALL_BUFFER or point.y >= FIELD_WIDTH - (robot_radius + WALL_BUFFER):
         print(str(point) + " is within buffer range of field walls!")
         field[idx] = 2
-
+    # Make sure origin is an obstacle
+    field[(0, 0)] = 1
     # Save field into cache file and return
     np.save(field_cache_file, field, allow_pickle=True)
     return field
@@ -136,7 +137,7 @@ def manhattan_distance(a, b):
 
   return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-def get_neighbors(field, node, goal):
+def get_neighbors(field, node, increment):
   """Returns the neighbors of a given node in the field.
 
   Args:
@@ -149,7 +150,6 @@ def get_neighbors(field, node, goal):
       int: Increment used to find neighbors
   """
   
-  increment = 1 if manhattan_distance(node, goal) < 35 else 25
   neighbors = []
   x, y = node
   for i in (-increment, 0, +increment):
@@ -158,7 +158,7 @@ def get_neighbors(field, node, goal):
       neighbor = (x + i, y + j)
       if 0 <= neighbor[0] < field.shape[0] and 0 <= neighbor[1] < field.shape[1]:
         neighbors.append(neighbor)
-  return neighbors, increment
+  return neighbors
 
 def is_turn(current, neighbor, previous):
   """Checks if going to the neighbor from the current point requires a turn, given the previous point
@@ -188,6 +188,9 @@ def astar(field, start, goal):
   Returns:
       array: Array of tuples representing the shortest path from start to goal in centimeters
   """
+
+  if len(start) > 2: start = (start[0], start[1])
+  if len(goal) > 2: goal = (goal[0], goal[1])
   
   # Distance weights to neighbor nodes
   neighbor_distances = { 0: 1.4, 1: 1.0, 2: 1.4, 3: 1.0, 4: 1.0, 5: 1.4, 6: 1.0, 7: 1.4 }
@@ -216,8 +219,8 @@ def astar(field, start, goal):
     if current == goal:
       path = []
       while current in came_from:
-        path.append(current)
         if current == start: break
+        path.append(current)
         current = came_from[current]
       return path[::-1]
 
@@ -225,7 +228,8 @@ def astar(field, start, goal):
     close_set.add(current)
     
     # Get neighbors
-    neighbors, increment = get_neighbors(field, current, goal)
+    increment = 1 if manhattan_distance(current, goal) < 35 else 25
+    neighbors = get_neighbors(field, current, increment)
 
     # Scored neighbor heap
     scored_neighbors = []
@@ -252,12 +256,12 @@ def astar(field, start, goal):
         # Add the neighbor to list of scored neighbors
         heapq.heappush(scored_neighbors, (f_score[neighbor], neighbor))
     
-    # Add best 2 neighbors to priority queue
-    for i in range(min(len(scored_neighbors), 2)):
+    # Add best 4 neighbors to priority queue
+    for i in range(min(len(scored_neighbors), 4)):
       heapq.heappush(oheap, heapq.heappop(scored_neighbors))
 
   # If the goal is not reachable, return False
-  return False
+  return False 
 
 def smooth_path(path):
   """Smooth path
@@ -268,6 +272,9 @@ def smooth_path(path):
   Returns:
       array: Array of points in smoothed path
   """
+  
+  # Minimum number of path points
+  if len(path) < 5: return path
 
   # Extract x and y coordinates from path
   coords = list(zip(*path))
@@ -342,6 +349,3 @@ if __name__ == "__main__":
   
   # Convert path to JSON string
   path_json = path_to_json(path)
-  
-  # Print JSON string
-  print(path_json)
