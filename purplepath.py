@@ -6,7 +6,6 @@ import json
 import psutil
 import ntcore
 import numpy as np
-import numba as nb
 import concurrent.futures
 import pathfinder
 
