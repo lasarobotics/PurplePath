@@ -1,53 +1,71 @@
-#!/bin/python
+#!/usr/bin/env python
 
+import os
 import json
 import heapq
+import pybresenham
 import numpy as np
 from scipy import interpolate
 
-def generate_field(year, robot_radius):
+
+global FIELD_LENGTH
+global FIELD_WIDTH
+global WALL_BUFFER
+FIELD_LENGTH = 16.50
+FIELD_WIDTH = 8.10
+WALL_BUFFER = 0.05
+
+def generate_field(year, radius):
   """Generate field for year
 
   Args:
       year (int): Field year to load
-      robot_radius (float): Radius of robot in meters
+      radius (float): Radius of robot in meters
 
   Returns:
       array: 2D array representing field
   """
-  
+
+
   import os
 
   FIELD_LENGTH = 16.50
   FIELD_WIDTH = 8.10
   WALL_BUFFER = 0.05
-  
+
+
+  import os
+
+  FIELD_LENGTH = 16.50
+  FIELD_WIDTH = 8.10
+  WALL_BUFFER = 0.05
+
   # 2D array representing field
   field = np.full((int(FIELD_LENGTH * 100) + 1, int(FIELD_WIDTH * 100) + 1), 0)
-  
+
   # Field cache file
   field_cache_file = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
     'fields',
-    str(year) + '.npy'
+    str(year) + "_" + str(radius).replace('.', '') + '.npy'
   )
-  
-  # If field cache file exists, read it and return fieldbhgfdxfgfdravbbv
+
+  # If field cache file exists, read it and return field
   if os.path.isfile(field_cache_file):
     field = np.load(field_cache_file, allow_pickle=True)
     return field
-  
+
   # Field json file
   field_json_file = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 
-    'fields', 
+    os.path.dirname(os.path.realpath(__file__)),
+    'fields',
     str(year) + '.json'
   )
   with open(field_json_file) as file:
     import json
     from shapely.geometry import Point
     from shapely.geometry.polygon import Polygon
-    
+
     # Read obstacles from file
     obstacles = json.load(file)['obstacles']
     obstacles = [
@@ -55,7 +73,7 @@ def generate_field(year, robot_radius):
       for obstacle in obstacles
     ]
     print(obstacles)
-    
+
     # Iterate over every square cm
     for idx in np.ndindex(field.shape):
       point = Point(idx[0] / 100, idx[1] / 100)
@@ -68,15 +86,15 @@ def generate_field(year, robot_radius):
           field[idx] = 1
           break
         # Check if point is within buffer range of obstacle
-        if shape.buffer(buffer_distance + robot_radius).contains(point):
+        if shape.buffer(buffer_distance + radius).contains(point):
           print(str(point) + " is within buffer range of " + name + "!")
           field[idx] = 2
           break
       # If point has already been identified as obstacle or buffer zone, continue
       if field[idx] != 0: continue
       # Check if point is close to field walls
-      if point.x <= robot_radius + WALL_BUFFER or point.x >= FIELD_LENGTH - (robot_radius + WALL_BUFFER) \
-        or point.y <= robot_radius + WALL_BUFFER or point.y >= FIELD_WIDTH - (robot_radius + WALL_BUFFER):
+      if point.x <= radius + WALL_BUFFER or point.x >= FIELD_LENGTH - (radius + WALL_BUFFER) \
+        or point.y <= radius + WALL_BUFFER or point.y >= FIELD_WIDTH - (radius + WALL_BUFFER):
         print(str(point) + " is within buffer range of field walls!")
         field[idx] = 2
     # Make sure origin is an obstacle
@@ -121,7 +139,7 @@ def distance(a, b):
   Returns:
       int or float: Estimated distance to goal
   """
-  
+
   return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
 
 def manhattan_distance(a, b):
@@ -137,6 +155,19 @@ def manhattan_distance(a, b):
 
   return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
+def chebyshev_distance(a, b):
+  """Chebyshev distance
+
+  Args:
+      a (tuple): tuple representing point in centimeters
+      b (tuple): tuple representing point in centimeters
+
+  Returns:
+      int or float: Estimated distance to goal
+  """
+
+  return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
 def get_neighbors(field, node, increment):
   """Returns the neighbors of a given node in the field.
 
@@ -149,7 +180,7 @@ def get_neighbors(field, node, increment):
       array: List of tuples representing the neighbors of the node
       int: Increment used to find neighbors
   """
-  
+
   neighbors = []
   x, y = node
   for i in (-increment, 0, +increment):
@@ -191,18 +222,19 @@ def astar(field, start, goal):
 
   if len(start) > 2: start = (start[0], start[1])
   if len(goal) > 2: goal = (goal[0], goal[1])
-  
+
   # Distance weights to neighbor nodes
   neighbor_distances = { 0: 1.4, 1: 1.0, 2: 1.4, 3: 1.0, 4: 1.0, 5: 1.4, 6: 1.0, 7: 1.4 }
 
   ## List of positions that have already been considered
   close_set = set()
-  
+
   # Dictionary containing all routes we've taken
   came_from = { start: start }
-  
+
   # Scores
   turn_penalty = 10
+  turn_counter = 0
   g_score = { start: 0 }
   f_score = { start: distance(start, goal) }
 
@@ -226,13 +258,10 @@ def astar(field, start, goal):
 
     # Mark the current node as closed
     close_set.add(current)
-    
+
     # Get neighbors
     increment = 1 if manhattan_distance(current, goal) < 35 else 25
     neighbors = get_neighbors(field, current, increment)
-
-    # Scored neighbor heap
-    scored_neighbors = []
 
     # For each neighbor of the current node
     for idx, neighbor in enumerate(neighbors):
@@ -241,8 +270,6 @@ def astar(field, start, goal):
         continue
       # If neighbor is estimated to be a worse path, skip
       neighbor_goal_distance = distance(neighbor, goal)
-      if neighbor_goal_distance > f_score[current]:
-        continue
       # If the neighbor is not closed and the current f_score is greater than the neighbor f_score
       if neighbor not in close_set and f_score[current] > f_score.get(neighbor, 0):
         # Add the neighbor to the came_from map
@@ -254,14 +281,32 @@ def astar(field, start, goal):
         if is_turn(current, neighbor, came_from[current]):
           f_score[neighbor] += turn_penalty
         # Add the neighbor to list of scored neighbors
-        heapq.heappush(scored_neighbors, (f_score[neighbor], neighbor))
-    
-    # Add best 4 neighbors to priority queue
-    for i in range(min(len(scored_neighbors), 4)):
-      heapq.heappush(oheap, heapq.heappop(scored_neighbors))
+        heapq.heappush(oheap, (f_score[neighbor], neighbor))
 
   # If the goal is not reachable, return False
-  return False 
+  return False
+
+def has_obstacle(a, b, field):
+  """Check for obstacles between points a and b using Bresenham's algorithm
+
+  Args:
+      a (tuple): Tuple representing point in centimeters
+      b (tuple): Tuple representing point in centimeters
+      field (array): 2D array representing field
+
+  Returns:
+      bool: True if obstacle exists on straight line between given points
+  """
+
+  x1, y1 = a
+  x2, y2 = b
+  line = list(pybresenham.line(x1, y1, x2, y2))
+
+  for point in line:
+    if field[point] != 0:
+      return True
+
+  return False
 
 def smooth_path(path):
   """Smooth path
@@ -272,7 +317,7 @@ def smooth_path(path):
   Returns:
       array: Array of points in smoothed path
   """
-  
+
   # Minimum number of path points
   if len(path) < 5: return path
 
@@ -280,7 +325,7 @@ def smooth_path(path):
   coords = list(zip(*path))
 
   # Smooth the path using spline interpolation
-  tck, *rest = interpolate.splprep([coords[0], coords[1]], s=500)
+  tck, *rest = interpolate.splprep([coords[0], coords[1]], s=150)
   x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 100), tck)
 
   return list(zip(x_smooth, y_smooth))
@@ -314,7 +359,7 @@ def plot_path(field, path, start, goal):
 
   # Extract x and y coordinates from path
   coords = list(zip(*path))
-  
+
   # Plot field and path
   fig, ax = plt.subplots()
   cmap = mcolors.ListedColormap(['green', 'grey', 'lightgrey'])
@@ -329,8 +374,8 @@ if __name__ == "__main__":
   # Example of how to use PurplePath
 
   # Generate FRC field
-  field = generate_field(2023, 0.35)
-  
+  field = generate_field(2023, 0.42)
+
   # Start point and goal
   start = m_to_cm((7.50, 3.50))
   goal = m_to_cm((15.10, 6.75))
@@ -339,13 +384,14 @@ if __name__ == "__main__":
 
   # Calculate path
   path = astar(field, start, goal)
-  path = smooth_path(path)
+  if not path or len(path) == 0: exit()
+  path = smooth_path(path, field)
 
   # Visualize path
   #plot_path(field, path, start, goal)
 
   # Convert path units back to meters
   path = [cm_to_m(point) for point in path]
-  
+
   # Convert path to JSON string
   path_json = path_to_json(path)
