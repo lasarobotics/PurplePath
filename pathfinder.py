@@ -220,6 +220,9 @@ def astar(field, start, goal):
       array: Array of tuples representing the shortest path from start to goal in centimeters
   """
 
+  # Post-processing settings
+  num_interpolations = 5
+
   if len(start) > 2: start = (start[0], start[1])
   if len(goal) > 2: goal = (goal[0], goal[1])
 
@@ -234,7 +237,6 @@ def astar(field, start, goal):
 
   # Scores
   turn_penalty = 10
-  turn_counter = 0
   g_score = { start: 0 }
   f_score = { start: distance(start, goal) }
 
@@ -254,7 +256,10 @@ def astar(field, start, goal):
         if current == start: break
         path.append(current)
         current = came_from[current]
-      return path[::-1]
+      path = path[::-1]
+      path = simplify_path(path, field)
+      path = insert_more_points(path, num_interpolations)
+      return path
 
     # Mark the current node as closed
     close_set.add(current)
@@ -308,6 +313,53 @@ def has_obstacle(a, b, field):
 
   return False
 
+def simplify_path(path, field):
+  """Simplify a path by removing unnecessary points that are visible to each other
+
+  Args:
+      path (list): List of tuples representing points in centimeters
+      field (array): 2D array representing field
+
+  Returns:
+      list: Simplified path
+  """
+  simplify_iterations = 3
+
+  simplified_path = []
+  for idx in range(simplify_iterations):
+    for i in range(len(path)):
+      for j in range(i + 2, len(path), 2):
+        if j >= len(path): break
+        if not has_obstacle(path[i], path[j], field):
+          path.remove(path[i + 1])
+
+  return path
+
+def insert_more_points(path, num_interpolations):
+  new_path = []
+  for i in range(len(path) - 1):
+    x1, y1 = path[i]
+    x2, y2 = path[i + 1]
+
+    # Get the list of points along the line using Bresenham's line algorithm
+    line = list(pybresenham.line(x1, y1, x2, y2))
+    # Insert the interpolated points between each pair of points
+    for j in range(1, len(line) - 1):
+      if num_interpolations > 0:
+        interpolated_points = []
+        for k in range(1, num_interpolations + 1):
+            interpolated_point = (
+              line[j][0] + k * (line[j + 1][0] - line[j][0]) / (num_interpolations + 1),
+              line[j][1] + k * (line[j + 1][1] - line[j][1]) / (num_interpolations + 1),
+            )
+            interpolated_points.append(interpolated_point)
+        new_path.extend(interpolated_points)
+
+        # Add the original endpoints of the line segment
+        new_path.extend(line[j:j + 2])
+
+  return new_path
+
 def smooth_path(path):
   """Smooth path
 
@@ -325,7 +377,7 @@ def smooth_path(path):
   coords = list(zip(*path))
 
   # Smooth the path using spline interpolation
-  tck, *rest = interpolate.splprep([coords[0], coords[1]], s=150)
+  tck, *rest = interpolate.splprep([coords[0], coords[1]])
   x_smooth, y_smooth = interpolate.splev(np.linspace(0, 1, 100), tck)
 
   return list(zip(x_smooth, y_smooth))
@@ -385,10 +437,10 @@ if __name__ == "__main__":
   # Calculate path
   path = astar(field, start, goal)
   if not path or len(path) == 0: exit()
-  path = smooth_path(path, field)
+  path = smooth_path(path)
 
   # Visualize path
-  #plot_path(field, path, start, goal)
+  plot_path(field, path, start, goal)
 
   # Convert path units back to meters
   path = [cm_to_m(point) for point in path]
