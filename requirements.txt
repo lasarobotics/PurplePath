@@ -1,6 +1,6 @@
+flask
 numpy
 scipy
-psutil
 shapely
 pyntcore
 matplotlib

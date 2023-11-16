@@ -2,17 +2,56 @@
 
 import os
 import sys
-import time
 import json
-import psutil
 import ntcore
 import argparse
 import numpy as np
-import concurrent.futures
 import pathfinder
+from flask import Flask, request
+
+global name
+global field
 
 name = "PurplePath"
-fast_cores = [15, 31]
+
+app = Flask(name)
+
+@app.route('/', methods=['POST'])
+def get_path():
+  """Server route for responding pathfinding requests
+  Must send a POST request containing an array of two JSON objects representing the start and goal
+
+  Returns:
+      string: JSON string representing list of points for path
+  """
+  # Read pose, return if invalid
+  start_entry = request.json[0]
+  start = (0.0, 0.0)
+  try:
+    start = (float(start_entry['x']), float(start_entry['y']))
+  except ValueError:
+    print("Not valid pose")
+  if np.isnan(start[0]) or np.isnan(start[1]): return start_entry
+  start = pathfinder.m_to_cm(start)
+
+  # Return if pose is outside field
+  if not 0 < start[0] < field.shape[0] or not 0 < start[1] < field.shape[1]: return start_entry
+
+  # Read goal
+  goal_entry = request.json[1]
+  try:
+    goal = (float(goal_entry['x']), float(goal_entry['y']))
+  except ValueError:
+    print("Not valid goal")
+  if np.isnan(goal[0]) or np.isnan(goal[1]): return start_entry
+  goal = pathfinder.m_to_cm(goal)
+
+  # Find path
+  path = find_path(field, start, goal)
+
+  # Return path JSON
+  if not path: return start_entry
+  return path
 
 def find_path(field, start_point, end_point):
   """Find path on FRC field
@@ -26,8 +65,6 @@ def find_path(field, start_point, end_point):
       array: Array of tuples representing the shortest path from start to goal in meters
   """
 
-  # Set CPU affinity
-  psutil.Process().cpu_affinity(fast_cores)
   # Calculate path
   path = pathfinder.astar(field, start_point, end_point)
   # Return None if path not found
@@ -42,70 +79,17 @@ def find_path(field, start_point, end_point):
   return path_json
 
 if __name__ == "__main__":
+  # Parse arguments
   parser = argparse.ArgumentParser()
   parser.add_argument("year", type=int, help="FRC field year to load")
   parser.add_argument("radius", type=float, help="Robot radius in meters")
-  parser.add_argument("--test", action="store_true", help="Run in test mode")
   if len(sys.argv) < 2:
     parser.print_help(sys.stderr)
     sys.exit(1)
   args = parser.parse_args()
 
-  # Initalize Network Tables
-  inst = ntcore.NetworkTableInstance.getDefault()
-  table = inst.getTable(name)
-  pose_subscriber = table.getStringTopic("Pose").subscribe("")
-  goal_subscriber = table.getStringTopic("Goal").subscribe("")
-  trajectory_publishers = []
-  for idx in range(10):
-    trajectory_publisher = table.getStringTopic("Trajectory" + str(idx)).publish(ntcore.PubSubOptions(periodic=0.02, keepDuplicates=True, pollStorage=10))
-    trajectory_publishers.append(trajectory_publisher)
-
-  inst.startClient4(name)
-  if args.test: inst.setServer("localhost", ntcore.NetworkTableInstance.kDefaultPort4)
-  else: inst.setServerTeam(418)
-
   # Generate field
   field = pathfinder.generate_field(args.year, args.radius)
 
-  # Start worker processes
-  with concurrent.futures.ProcessPoolExecutor(max_workers=len(fast_cores)) as executor:
-    while True:
-      # Get robot pose via NetworkTables
-      pose_entry = pose_subscriber.get()
-      goal_entry = goal_subscriber.get()
-
-      # Continue if pose or goal invalid
-      if not pose_entry or not goal_entry: continue
-
-      # Read pose
-      pose_entry = json.loads(pose_entry)
-      pose = (0.0, 0.0)
-      try:
-        pose = (float(pose_entry['x']), float(pose_entry['y']))
-      except ValueError:
-        print("Not valid pose")
-      if np.isnan(pose[0]) or np.isnan(pose[1]): continue
-      pose = pathfinder.m_to_cm(pose)
-
-      # Continue if pose is outside field
-      if not 0 < pose[0] < field.shape[0] and 0 < pose[1] < field.shape[1]: continue
-
-      # Read goal
-      goal_entries = json.loads(goal_entry)
-      if len(goal_entries) > 10: continue
-      for idx, goal_entry in enumerate(goal_entries):
-        goal = (goal_entry['x'], goal_entry['y'])
-        goal = pathfinder.m_to_cm(goal)
-
-        # Skip if pose or goal is obstacle
-        if field[pose] != 0 or field[goal] != 0:
-          trajectory_publishers[idx].set("")
-          continue
-
-        # Submit path for calculation, get future result asynchronously
-        future = executor.submit(find_path, field, pose, goal)
-
-        # Publish result to network tables
-        if future.result(): trajectory_publishers[idx].set(future.result())
-        else: trajectory_publishers[idx].set("")
+  # Run flask app
+  app.run(threaded=True)
