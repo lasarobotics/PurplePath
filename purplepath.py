@@ -1,9 +1,11 @@
-#!/bin/python
+#!/usr/bin/env python
 
 import os
 import sys
+import time
 import json
 import ntcore
+import logging
 import argparse
 import numpy as np
 import pathfinder
@@ -24,6 +26,8 @@ def get_path():
   Returns:
       string: JSON string representing list of points for path
   """
+  start_time = time.time()
+
   # Read pose, return if invalid
   start_entry = request.json[0]
   start = (0.0, 0.0)
@@ -48,6 +52,11 @@ def get_path():
 
   # Find path
   path = find_path(field, start, goal)
+
+  # Print request and execution time
+  current_time = time.time()
+  execution_time = current_time - start_time
+  print(str(time.ctime(int(current_time))) + " " + str(execution_time * 1000) + "ms\t" + str(request.json))
 
   # Return path JSON
   if not path: return start_entry
@@ -90,6 +99,9 @@ if __name__ == "__main__":
 
   # Generate field
   field = pathfinder.generate_field(args.year, args.radius)
+
+  # Set logging level
+  logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
   # Run flask app
   app.run(threaded=True)
