@@ -40,9 +40,14 @@ def get_path():
     return start_entry
   start = pathfinder.m_to_cm(start)
 
-  # Return if pose is outside field
+  # Return if start is outside field
   if not 0 < start[0] < field.shape[0] or not 0 < start[1] < field.shape[1]:
-    log(start_time, request, "Invalid start location!")
+    log(start_time, request, "Start location is outside field!")
+    return start_entry
+
+  # Return if start is inside an object
+  if field[start] == 1:
+    log(start_time, request, "Start location is inside object!")
     return start_entry
 
   # Read goal
@@ -56,15 +61,26 @@ def get_path():
     return start_entry
   goal = pathfinder.m_to_cm(goal)
 
+  # Return if goal is outside field
+  if not 0 < goal[0] < field.shape[0] or not 0 < goal[1] < field.shape[1]:
+    log(start_time, request, "Goal location is outside field!")
+    return start_entry
+
+  # Return if goal is inside an object
+  if field[goal] != 0:
+    log(start_time, request, "Goal location is inside an object!")
+    return start_entry
+
   # Find path
   path = find_path(field, start, goal)
 
-  # Print request and execution time
-  log(start_time, request, "Path found!")
-
   # Return path JSON
-  if not path: return start_entry
-  return path
+  if not path:
+    log(start_time, request, "Path NOT found!")
+    return start_entry
+  else:
+    log(start_time, request, "Path found!")
+    return path
 
 def find_path(field, start_point, end_point):
   """Find path on FRC field
@@ -102,7 +118,7 @@ def log(start_time, request, message=""):
 
   current_time = time.time()
   execution_time = time.perf_counter() - start_time
-  print(str(time.ctime(int(current_time))) + " " + str('{:.3f}'.format(execution_time * 1000)) + "ms\t" + str(request.json) + "\t\t" + message)
+  print(str(time.ctime(int(current_time))) + " " + str('{:.3f}'.format(execution_time * 1000)) + "ms\t" + message + "\t\t\t" + str(request.json))
 
 if __name__ == "__main__":
   # Parse arguments

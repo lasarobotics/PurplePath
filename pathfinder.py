@@ -206,7 +206,7 @@ def astar(field, start, goal):
   """
 
   # Post-processing settings
-  num_interpolations = 2
+  num_interpolations = 10
 
   if len(start) > 2: start = (start[0], start[1])
   if len(goal) > 2: goal = (goal[0], goal[1])
@@ -413,10 +413,10 @@ if __name__ == "__main__":
   field = generate_field(2023, 0.42)
 
   # Start point and goal
-  start = m_to_cm((7.50, 3.50))
-  goal = m_to_cm((15.10, 6.75))
-  # start = m_to_cm((8.00, 5.00))
-  # goal = m_to_cm((14.50, 2.50))
+  # start = m_to_cm((7.50, 3.50))
+  # goal = m_to_cm((15.10, 6.75))
+  start = m_to_cm((8.00, 5.00))
+  goal = m_to_cm((14.50, 2.50))
 
   # Calculate path
   path = astar(field, start, goal)
