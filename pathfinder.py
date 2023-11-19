@@ -7,7 +7,6 @@ import pybresenham
 import numpy as np
 from scipy import interpolate
 
-
 global FIELD_LENGTH
 global FIELD_WIDTH
 global WALL_BUFFER
@@ -25,20 +24,6 @@ def generate_field(year, radius):
   Returns:
       array: 2D array representing field
   """
-
-
-  import os
-
-  FIELD_LENGTH = 16.50
-  FIELD_WIDTH = 8.10
-  WALL_BUFFER = 0.05
-
-
-  import os
-
-  FIELD_LENGTH = 16.50
-  FIELD_WIDTH = 8.10
-  WALL_BUFFER = 0.05
 
   # 2D array representing field
   field = np.full((int(FIELD_LENGTH * 100) + 1, int(FIELD_WIDTH * 100) + 1), 0)
@@ -221,7 +206,7 @@ def astar(field, start, goal):
   """
 
   # Post-processing settings
-  num_interpolations = 5
+  num_interpolations = 2
 
   if len(start) > 2: start = (start[0], start[1])
   if len(goal) > 2: goal = (goal[0], goal[1])
@@ -325,7 +310,6 @@ def simplify_path(path, field):
   """
   simplify_iterations = 3
 
-  simplified_path = []
   for idx in range(simplify_iterations):
     for i in range(len(path)):
       for j in range(i + 2, len(path), 2):
