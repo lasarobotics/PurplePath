@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import json
+import signal
 import ntcore
 import logging
 import argparse
@@ -120,6 +121,14 @@ def log(start_time, request, message=""):
   execution_time = time.perf_counter() - start_time
   print(str(time.ctime(int(current_time))) + " " + str('{:.3f}'.format(execution_time * 1000)) + "ms\t" + message + "\t\t\t" + str(request.json))
 
+def signal_handler(signum, frame):
+  """Handle exit signal
+  """
+
+  print()
+  print("Got CTRL+C, exiting...")
+  sys.exit(0)
+
 if __name__ == "__main__":
   # Parse arguments
   parser = argparse.ArgumentParser()
@@ -131,9 +140,12 @@ if __name__ == "__main__":
     sys.exit(1)
   args = parser.parse_args()
 
+  # Set SIGINT handler
+  signal.signal(signal.SIGINT, signal_handler)
+
   # Generate field
   field = pathfinder.generate_field(args.year, args.radius)
-  if args.generate_field: exit()
+  if args.generate_field: sys.exit(0)
 
   # Set logging level
   logging.getLogger('werkzeug').setLevel(logging.ERROR)
