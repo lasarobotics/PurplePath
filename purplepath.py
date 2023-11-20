@@ -125,6 +125,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("year", type=int, help="FRC field year to load")
   parser.add_argument("radius", type=float, help="Robot radius in meters")
+  parser.add_argument("--generate-field", action="store_true", help="Generate field and exit")
   if len(sys.argv) < 2:
     parser.print_help(sys.stderr)
     sys.exit(1)
@@ -132,6 +133,7 @@ if __name__ == "__main__":
 
   # Generate field
   field = pathfinder.generate_field(args.year, args.radius)
+  if args.generate_field: exit()
 
   # Set logging level
   logging.getLogger('werkzeug').setLevel(logging.ERROR)

@@ -4,6 +4,7 @@ import os
 import json
 import heapq
 import pybresenham
+import progressbar
 import numpy as np
 from scipy import interpolate
 
@@ -38,6 +39,7 @@ def generate_field(year, radius):
   # If field cache file exists, read it and return field
   if os.path.isfile(field_cache_file):
     field = np.load(field_cache_file, allow_pickle=True)
+    print("Matching field cache already exists...")
     return field
 
   # Field json file
@@ -46,6 +48,7 @@ def generate_field(year, radius):
     'fields',
     str(year) + '.json'
   )
+  print("Matching field cache not found...")
   with open(field_json_file) as file:
     import json
     from shapely.geometry import Point
@@ -57,22 +60,31 @@ def generate_field(year, radius):
       (obstacle['name'], obstacle['buffer_distance'], Polygon(obstacle['vertices']))
       for obstacle in obstacles
     ]
-    print(obstacles)
+    print("Reading field obstacle JSON...")
 
+    print("Building field...")
+    # Initialise progress bar
+    progress = 0
+    pbar = progressbar.ProgressBar(
+      max_value=field.shape[0] * field.shape[1],
+      widgets=[progressbar.Percentage(), " ", progressbar.GranularBar(), " ", progressbar.ETA(), ],
+      redirect_stdout=True
+    ).start()
     # Iterate over every square cm
     for idx in np.ndindex(field.shape):
+      # Update progress
+      pbar.update(progress)
+      progress += 1
+
       point = Point(idx[0] / 100, idx[1] / 100)
       # Iterate over each obstacle
       for name, buffer_distance, shape in obstacles:
         # Check if point is within obstacle
-        print("Checking if " + str(point) + " is within " + name)
         if shape.contains(point):
-          print(str(point) + " is within " + name + "!")
           field[idx] = 1
           break
         # Check if point is within buffer range of obstacle
         if shape.buffer(buffer_distance + radius).contains(point):
-          print(str(point) + " is within buffer range of " + name + "!")
           field[idx] = 2
           break
       # If point has already been identified as obstacle or buffer zone, continue
@@ -80,12 +92,14 @@ def generate_field(year, radius):
       # Check if point is close to field walls
       if point.x <= radius + WALL_BUFFER or point.x >= FIELD_LENGTH - (radius + WALL_BUFFER) \
         or point.y <= radius + WALL_BUFFER or point.y >= FIELD_WIDTH - (radius + WALL_BUFFER):
-        print(str(point) + " is within buffer range of field walls!")
         field[idx] = 2
     # Make sure origin is an obstacle
     field[(0, 0)] = 1
     # Save field into cache file and return
+    print("Saving field cache...")
     np.save(field_cache_file, field, allow_pickle=True)
+    pbar.finish()
+    print("Complete!")
     return field
 
 def m_to_cm(point):
@@ -163,18 +177,12 @@ def get_neighbors(field, node, increment):
 
   Returns:
       array: List of tuples representing the neighbors of the node
-      int: Increment used to find neighbors
   """
 
-  neighbors = []
   x, y = node
-  for i in (-increment, 0, +increment):
-    for j in (-increment, 0, +increment):
-      if i == 0 and j == 0: continue
-      neighbor = (x + i, y + j)
-      if 0 <= neighbor[0] < field.shape[0] and 0 <= neighbor[1] < field.shape[1]:
-        neighbors.append(neighbor)
-  return neighbors
+  return [(x - increment, y - increment), (x - increment, y), (x - increment, y + increment),
+          (x, y - increment), (x, y + increment),
+          (x + increment, y - increment), (x + increment, y), (x + increment, y + increment)]
 
 def is_turn(current, neighbor, previous):
   """Checks if going to the neighbor from the current point requires a turn, given the previous point
@@ -206,7 +214,7 @@ def astar(field, start, goal):
   """
 
   # Post-processing settings
-  num_interpolations = 10
+  num_interpolations = 2
 
   if len(start) > 2: start = (start[0], start[1])
   if len(goal) > 2: goal = (goal[0], goal[1])
@@ -255,6 +263,9 @@ def astar(field, start, goal):
 
     # For each neighbor of the current node
     for idx, neighbor in enumerate(neighbors):
+      # If neighbor is not in field, skip
+      if not 0 <= neighbor[0] < field.shape[0] and not 0 <= neighbor[1] < field.shape[1]:
+        continue
       # If neighbor is not clear, skip
       if field[neighbor] != 0:
         continue
