@@ -95,9 +95,11 @@ def generate_field(year, radius):
         field[idx] = 2
     # Make sure origin is an obstacle
     field[(0, 0)] = 1
+
     # Save field into cache file and return
     print("Saving field cache...")
     np.save(field_cache_file, field, allow_pickle=True)
+
     pbar.finish()
     print("Complete!")
     return field
@@ -304,9 +306,7 @@ def has_obstacle(a, b, field):
   line = list(pybresenham.line(x1, y1, x2, y2))
 
   for point in line:
-    if field[point] != 0:
-      return True
-
+    if field[point] != 0: return True
   return False
 
 def simplify_path(path, field):

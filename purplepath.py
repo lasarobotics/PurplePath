@@ -147,7 +147,7 @@ if __name__ == "__main__":
   field = pathfinder.generate_field(args.year, args.radius)
   if args.generate_field: sys.exit(0)
 
-  # Set logging level
+  # Set flask logging level
   logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
   # Run flask app
