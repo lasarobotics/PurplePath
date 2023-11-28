@@ -119,7 +119,7 @@ def log(start_time, request, message=""):
 
   current_time = time.time()
   execution_time = time.perf_counter() - start_time
-  print(str(time.ctime(int(current_time))) + " " + str('{:.3f}'.format(execution_time * 1000)) + "ms\t" + message + "\t\t\t" + str(request.json))
+  print(str(time.ctime(int(current_time))) + "\t" + str('{:.3f}'.format(execution_time * 1000)) + "ms \t" + message + "\t\t\t\t\t" + str(request.json))
 
 def signal_handler(signum, frame):
   """Handle exit signal
