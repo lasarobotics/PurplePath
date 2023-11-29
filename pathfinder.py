@@ -67,7 +67,7 @@ def generate_field(year, radius):
     progress = 0
     pbar = progressbar.ProgressBar(
       max_value=field.shape[0] * field.shape[1],
-      widgets=[progressbar.Percentage(), " ", progressbar.GranularBar(), " ", progressbar.ETA(), ],
+      widgets=[progressbar.Percentage(), " ", progressbar.GranularBar(), " ", progressbar.AdaptiveETA(), ],
       redirect_stdout=True
     ).start()
     # Iterate over every square cm
