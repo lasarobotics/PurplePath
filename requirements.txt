@@ -4,5 +4,5 @@ scipy
 shapely
 pyntcore
 matplotlib
-progressbar
 pybresenham
+progressbar2
