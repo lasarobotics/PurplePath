@@ -151,4 +151,4 @@ if __name__ == "__main__":
   logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
   # Run flask app
-  app.run(threaded=True)
+  app.run(threaded=True, host="0.0.0.0")
