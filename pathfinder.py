@@ -13,7 +13,7 @@ global FIELD_WIDTH
 global WALL_BUFFER
 FIELD_LENGTH = 16.50
 FIELD_WIDTH = 8.10
-WALL_BUFFER = 0.05
+WALL_BUFFER = 0.01
 
 def generate_field(year, radius):
   """Generate field for year
@@ -421,7 +421,7 @@ if __name__ == "__main__":
   # Example of how to use PurplePath
 
   # Generate FRC field
-  field = generate_field(2023, 0.42)
+  field = generate_field(2023, 0.45)
 
   # Start point and goal
   # start = m_to_cm((7.50, 3.50))
