@@ -319,7 +319,7 @@ def simplify_path(path, field):
   Returns:
       list: Simplified path
   """
-  simplify_iterations = 3
+  simplify_iterations = 5
 
   for idx in range(simplify_iterations):
     for i in range(len(path)):
