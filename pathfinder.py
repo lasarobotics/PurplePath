@@ -50,7 +50,6 @@ def generate_field(year, radius):
   )
   print("Matching field cache not found...")
   with open(field_json_file) as file:
-    import json
     from shapely.geometry import Point
     from shapely.geometry.polygon import Polygon
 
