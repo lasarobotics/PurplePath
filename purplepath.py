@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
-import os
 import sys
 import time
-import json
 import signal
-import ntcore
 import logging
 import argparse
 import numpy as np
