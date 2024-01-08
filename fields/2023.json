@@ -1,4 +1,5 @@
 {
+  "size": [ 16.50, 8.10 ],
   "obstacles": [
     {
       "name": "blue_wall",
