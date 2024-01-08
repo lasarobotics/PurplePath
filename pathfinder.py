@@ -8,11 +8,7 @@ import progressbar
 import numpy as np
 from scipy import interpolate
 
-global FIELD_LENGTH
-global FIELD_WIDTH
 global WALL_BUFFER
-FIELD_LENGTH = 16.50
-FIELD_WIDTH = 8.10
 WALL_BUFFER = 0.01
 
 def generate_field(year, radius):
@@ -25,9 +21,6 @@ def generate_field(year, radius):
   Returns:
       array: 2D array representing field
   """
-
-  # 2D array representing field
-  field = np.full((int(FIELD_LENGTH * 100) + 1, int(FIELD_WIDTH * 100) + 1), 0)
 
   # Field cache file
   field_cache_file = os.path.join(
@@ -54,12 +47,17 @@ def generate_field(year, radius):
     from shapely.geometry.polygon import Polygon
 
     # Read obstacles from file
-    obstacles = json.load(file)['obstacles']
+    json_file = json.load(file)
+    obstacles = json_file['obstacles']
+    field_length = json_file['size'][0]
+    field_width = json_file['size'][1]
     obstacles = [
       (obstacle['name'], obstacle['buffer_distance'], Polygon(obstacle['vertices']))
       for obstacle in obstacles
     ]
     print("Reading field obstacle JSON...")
+
+    field = np.full((int(field_length * 100) + 1, int(field_width * 100) + 1), 0)
 
     print("Building field...")
     # Initialise progress bar
@@ -89,8 +87,8 @@ def generate_field(year, radius):
       # If point has already been identified as obstacle or buffer zone, continue
       if field[idx] != 0: continue
       # Check if point is close to field walls
-      if point.x <= radius + WALL_BUFFER or point.x >= FIELD_LENGTH - (radius + WALL_BUFFER) \
-        or point.y <= radius + WALL_BUFFER or point.y >= FIELD_WIDTH - (radius + WALL_BUFFER):
+      if point.x <= radius + WALL_BUFFER or point.x >= field_length - (radius + WALL_BUFFER) \
+        or point.y <= radius + WALL_BUFFER or point.y >= field_width - (radius + WALL_BUFFER):
         field[idx] = 2
     # Make sure origin is an obstacle
     field[(0, 0)] = 1
