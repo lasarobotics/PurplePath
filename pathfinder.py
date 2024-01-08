@@ -418,7 +418,7 @@ if __name__ == "__main__":
   # Example of how to use PurplePath
 
   # Generate FRC field
-  field = generate_field(2023, 0.45)
+  field = generate_field(2024, 0.45)
 
   # Start point and goal
   # start = m_to_cm((7.50, 3.50))
