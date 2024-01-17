@@ -1,0 +1,15 @@
+[Unit]
+Description=PurplePath service
+
+[Service]
+# Change working directory and paths as necessary
+# Replace <year> and <radius> as necessary and copy this file to ~/.config/systemd/user
+# Then run the following commands
+# "systemctl daemon-reload"
+# "systemctl --user enable purplepath.service"
+# "systemctl --user start purplepath.service"
+WorkingDirectory=/home/lasa/PurplePath
+ExecStart=/home/lasa/PurplePath/.venv/bin/python /home/lasa/PurplePath/purplepath.py <year> <radius>
+
+[Install]
+WantedBy=default.target
