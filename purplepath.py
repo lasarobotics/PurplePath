@@ -1,151 +1,212 @@
-#!/usr/bin/env python
-
 import sys
 import time
-import signal
-import logging
-import argparse
-import numpy as np
+import ntcore
+import time
 import pathfinder
-from flask import Flask, request
+import logging as log
+import pandas as pd
+import json
+import numpy as np
+import wpimath.geometry
+from io import StringIO
+from wpiutil import wpistruct
+from wpimath.geometry import Translation2d
+import dataclasses
 
 global name
 global field
 
-name = "PurplePath"
+field = np.array(pathfinder.generate_field(2024, 0.45))
 
-app = Flask(name)
+print(field)
 
-@app.route('/', methods=['POST'])
-def get_path():
-  """Server route for responding pathfinding requests
-  Must send a POST request containing an array of two JSON objects representing the start and goal
+start_time = time.perf_counter()
 
-  Returns:
-      string: JSON string representing list of points for path
-  """
-  start_time = time.perf_counter()
+@wpistruct.make_wpistruct
+@dataclasses.dataclass
+class point:
+    value: Translation2d
 
-  # Read pose, return if invalid
-  start_entry = request.json[0]
-  start = (0.0, 0.0)
-  try:
-    start = (float(start_entry['x']), float(start_entry['y']))
-  except ValueError:
-    log(start_time, request, "Invalid start location!")
-  if np.isnan(start[0]) or np.isnan(start[1]):
-    log(start_time, request, "Invalid start location!")
-    return start_entry
-  start = pathfinder.m_to_cm(start)
-
-  # Return if start is outside field
-  if not 0 < start[0] < field.shape[0] or not 0 < start[1] < field.shape[1]:
-    log(start_time, request, "Start location is outside field!")
-    return start_entry
-
-  # Return if start is inside an object
-  if field[start] == 1:
-    log(start_time, request, "Start location is inside object!")
-    return start_entry
-
-  # Read goal
-  goal_entry = request.json[1]
-  try:
-    goal = (float(goal_entry['x']), float(goal_entry['y']))
-  except ValueError:
-    log(start_time, request, "Invalid goal location!")
-  if np.isnan(goal[0]) or np.isnan(goal[1]):
-    log(start_time, request, "Invalid goal location!")
-    return start_entry
-  goal = pathfinder.m_to_cm(goal)
-
-  # Return if goal is outside field
-  if not 0 < goal[0] < field.shape[0] or not 0 < goal[1] < field.shape[1]:
-    log(start_time, request, "Goal location is outside field!")
-    return start_entry
-
-  # Return if goal is inside an object
-  if field[goal] != 0:
-    log(start_time, request, "Goal location is inside an object!")
-    return start_entry
-
-  # Find path
-  path = find_path(field, start, goal)
-
-  # Return path JSON
-  if not path:
-    log(start_time, request, "Path NOT found!")
-    return start_entry
-  else:
-    log(start_time, request, "Path found!")
-    return path
+    
 
 def find_path(field, start_point, end_point):
-  """Find path on FRC field
+    """Find path on FRC field
 
-  Args:
-      field (array): 2D array representing field
-      start_point (tuple): tuple representing start point in centimeters
-      end_point (tuple): tuple representing end point in centimeters
+    Args:
+        field (array): 2D array representing field
+        start_point (tuple): tuple representing start point in centimeters
+        end_point (tuple): tuple representing end point in centimeters
 
-  Returns:
-      array: Array of tuples representing the shortest path from start to goal in meters
-  """
+    Returns:
+        array: Array of tuples representing the shortest path from start to goal in meters
+    """
 
-  # Calculate path
-  path = pathfinder.astar(field, start_point, end_point)
-  # Return None if path not found
-  if not path: return None
-  # Smooth path
-  path = pathfinder.smooth_path(path)
-  # Convert path from centimeters to meters
-  path = [pathfinder.cm_to_m(point) for point in path]
+    # Calculate path
+    path = pathfinder.astar(field, start_point, end_point)
+    # Return None if path not found
+    if not path: return None
+    # Smooth path
+    path = pathfinder.smooth_path(path)
+    # Convert path from centimeters to meters
+    path = [pathfinder.cm_to_m(point) for point in path]
 
-  path_json = pathfinder.path_to_json(path)
+    print(f"path: {path}")
 
-  return path_json
+    return path
 
-def log(start_time, request, message=""):
-  """Log to stdout
+def log(start_time, message=""):
+    """Log to stdout
 
-  Args:
-      start_time (int): Start time from perf_counter
-      request (dict): Request from client
-      message (str, optional): Additional message. Defaults to "".
-  """
+    Args:
+        start_time (int): Start time from perf_counter
+        request (dict): Request from client
+        message (str, optional): Additional message. Defaults to "".
+    """
 
-  current_time = time.time()
-  execution_time = time.perf_counter() - start_time
-  print(str(time.ctime(int(current_time))) + "\t" + str('{:.3f}'.format(execution_time * 1000)) + "ms \t" + message + "\t\t\t\t\t" + str(request.json))
+    current_time = time.time()
+    execution_time = time.perf_counter() - start_time
+    print(str(time.ctime(int(current_time))) + "\t" + str('{:.3f}'.format(execution_time * 1000)) + "ms \t" + message + "\t\t\t\t\t")
 
 def signal_handler(signum, frame):
-  """Handle exit signal
-  """
+    """Handle exit signal
+    """
 
-  print()
-  print("Got CTRL+C, exiting...")
-  sys.exit(0)
+    print()
+    print("Got CTRL+C, exiting...")
+    sys.exit(0)
+
+def path_creater(pathSet, x1, y1, x2, y2):
+    print(f"X1: {x1} Y1: {y1} X2: {x2} Y2: {y2}")
+
+    start_entry = tuple([x1, y1])
+    start = (0.0, 0.0)
+
+    try:
+        start = (start_entry[0], start_entry[1])
+    except ValueError:
+        log(start_time, "Invalid start location!")
+        return
+
+
+    if (start[0] == None) or (start[1] == None):
+        log(start_time, "Invalid start location!")
+        return
+
+
+    start = pathfinder.m_to_cm(start)
+
+    # Return if start is outside field
+    if not 0 < start[0] < field.shape[0] or not 0 < start[1] < field.shape[1]:
+        log(start_time, "Start location is outside field!")
+        return
+
+    # Return if start is inside an object
+    if field[start] == 1:
+        log(start_time, "Start location is inside object!")
+        return
+
+        
+    # Read goal
+    goal_entry = tuple([x2, y2])
+    try:
+        goal = (float(goal_entry[0]), float(goal_entry[1]))
+    except ValueError:
+        log(start_time, "Invalid goal location!")
+        return
+
+
+    if goal[0] == None or goal[1] == None:
+        log(start_time, "Invalid goal location!")
+        return
+
+
+    goal = pathfinder.m_to_cm(goal)
+
+    # Return if goal is outside field
+    if not 0 < goal[0] < field.shape[0] or not 0 < goal[1] < field.shape[1]:
+        log(start_time, "Goal location is outside field!")
+        return
+
+
+    # Return if goal is inside an object
+    if field[goal] != 0:
+        log(start_time, "Goal location is inside an object!")
+        return
+
+
+    # Find path
+    path = find_path(field, start, goal)
+
+    point_list = []
+
+    if(path != None):
+        for idx, path_pointer in enumerate(path):
+            point_list.append(Translation2d(path_pointer[0], path_pointer[1]))
+    
+    print(f"{x2} + {y2}")
+    if(len(point_list) != 0):
+        print(point_list[len(point_list)-1])
+
+
+    if not path:
+        log(start_time, "Path NOT found!")
+        return
+
+    else:
+        log(start_time, "Path found!")
+        pathSet.set(point_list)
+
 
 if __name__ == "__main__":
-  # Parse arguments
-  parser = argparse.ArgumentParser()
-  parser.add_argument("year", type=int, help="FRC field year to load")
-  parser.add_argument("radius", type=float, help="Robot radius in meters")
-  parser.add_argument("--generate-field", action="store_true", help="Generate field and exit")
-  if len(sys.argv) < 2:
-    parser.print_help(sys.stderr)
-    sys.exit(1)
-  args = parser.parse_args()
+    inst = ntcore.NetworkTableInstance.getDefault()
+    table = inst.getTable("SmartDashboard")
 
-  # Set SIGINT handler
-  signal.signal(signal.SIGINT, signal_handler)
+    defaultVal = [Translation2d(0, 0), Translation2d(0, 0)]
 
-  # Generate field
-  field = pathfinder.generate_field(args.year, args.radius)
-  if args.generate_field: sys.exit(0)
+    curPosSub = table.getStructTopic("Start Point", Translation2d).subscribe(defaultVal[1])
+    endPosSub = table.getStructTopic("End Point", Translation2d).subscribe(defaultVal[0])
 
-  # Set flask logging level
-  logging.getLogger('werkzeug').setLevel(logging.ERROR)
+    curPosPub = table.getStructTopic("Start Point", Translation2d).publish()
+    endPosPub = table.getStructTopic("End Point", Translation2d).publish()
 
-  # Run flask app
-  app.run(threaded=True, host="0.0.0.0")
+    pathSet = table.getStructArrayTopic("Path", Translation2d).publish()
+    
+    inst.startClient4("example client")
+    inst.setServer("localhost") # where TEAM=190, 294, etc, or use inst.setServer("hostname") or similar
+    inst.startDSClient() # recommended if running on DS computer; this gets the robot IP from the DS
+
+    start_position = curPosSub.get()
+    end_position = endPosSub.get()
+
+
+    start_pos_x = round(start_position[0], 2)
+    start_pos_y = round(start_position[1], 2)
+
+    end_pos_x = round(end_position[0], 2)
+    end_pos_y = round(end_position[1], 2)
+
+    x1 = start_pos_x
+    y1 = start_pos_y
+    x2 = end_pos_x
+    y2 = end_pos_y
+
+    count = 0
+    while True:
+        start_val = curPosSub.get()
+        end_val = endPosSub.get()
+        
+        start_val_x = round(start_val[0], 2)
+        start_val_y = round(start_val[1], 2)
+
+        if(start_val_x != x1 and start_val_y != y1):
+            x1 = start_val[0]
+            y1 = start_val[1]
+
+            x2 = end_val[0]
+            y2 = end_val[1]
+            path_creater(pathSet, x1, y1, x2, y2)
+
+        print(f"count: {count}")
+        count+=1
+
+        time.sleep(1)
